@@ -1,6 +1,9 @@
 (ns minikanren-uncourse.core
   (:require [clojure.core.logic :as cl]))
 
+; ------------------------------------
+; Appendo
+; ------------------------------------
 
 ; standard functional version
 (defn append [l1 l2]
@@ -25,10 +28,42 @@
        ; want it to come last or some queries (like asking for 5 results when there are 4 in
        ; appendo queries) will go into and infinite loop
 
-(defn -main []
-  (println
-    (cl/run 1 [out]
-             (appendo '(1 2 3) '(4 5) out)
-         )))
+(cl/run 1 [out]
+       (appendo '(1 2 3) out '(1 2 3 4 5)))
 
 (time  (cl/run 5 [q y] (appendo q y '(1 2 3))))
+
+; ------------------------------------
+; Membero
+; ------------------------------------
+
+(defn member [item xs]
+  (cond (empty? xs) false
+        (= (first xs) item) xs
+        :else (recur item (rest xs))))
+
+
+(member 5 '(3 4 5 6 7))
+(member 5 '(3 4 5 6 5 7))
+(member 8 '(3 4 5 6 5 7))
+
+(defn membero [item xs out]
+  (cl/fresh [t]
+    (cl/conde
+      [(cl/== '() xs) (cl/== false out)]
+      ; Note: we don't need a variable for the head of the list that we check for unification with 'item' -
+      ; we can just use item directly in the conso call
+      [(cl/conso item t xs) (cl/== xs out)]
+      [(cl/resto xs t) (membero item t out)])))
+
+(cl/run 1 [out]
+        (membero 5 '() out))
+
+(cl/run 1 [out]
+        (membero 5 '(5 6 7) out))
+
+(cl/run 1 [out]
+        (membero out '(5 6 7) '(5 6 7)))
+
+(cl/run 2 [out]
+        (membero 5 '(3 4 5 6 5 7) out))
