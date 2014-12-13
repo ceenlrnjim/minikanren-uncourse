@@ -48,22 +48,22 @@
 (member 8 '(3 4 5 6 5 7))
 
 (defn membero [item xs out]
-  (cl/fresh [t]
+  (cl/fresh [h t]
     (cl/conde
-      [(cl/== '() xs) (cl/== false out)]
+      ;[(cl/== '() xs) (cl/== false out)] ; remove this to get "failure" instead of success with a false return
       ; Note: we don't need a variable for the head of the list that we check for unification with 'item' -
       ; we can just use item directly in the conso call
       [(cl/conso item t xs) (cl/== xs out)]
-      [(cl/resto xs t) (membero item t out)])))
+      [(cl/conso h t xs) (cl/!= item h) (membero item t out)]))) ; could also use cl/resto instead of conso
 
-(cl/run 1 [out]
+(cl/run*  [out]
         (membero 5 '() out))
 
-(cl/run 1 [out]
+(cl/run*  [out]
         (membero 5 '(5 6 7) out))
 
-(cl/run 1 [out]
+(cl/run* [out]
         (membero out '(5 6 7) '(5 6 7)))
 
-(cl/run 2 [out]
+(cl/run*  [out]
         (membero 5 '(3 4 5 6 5 7) out))
