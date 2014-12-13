@@ -57,13 +57,19 @@
       [(cl/conso h t xs) (cl/!= item h) (membero item t out)]))) ; could also use cl/resto instead of conso
 
 (cl/run*  [out]
-        (membero 5 '() out))
+  (membero 5 '() out))
 
 (cl/run*  [out]
-        (membero 5 '(5 6 7) out))
+  (membero 5 '(5 6 7) out))
 
 (cl/run* [out]
-        (membero out '(5 6 7) '(5 6 7)))
+  (membero out '(5 6 7) '(5 6 7)))
 
 (cl/run*  [out]
-        (membero 5 '(3 4 5 6 5 7) out))
+  (membero 5 '(3 4 5 6 5 7) out))
+
+; interesting output - not covered in the video: qualification on values of _0
+;((3 4 5 6 7) ((_0 3 4 5 6 7) :- (!= (_0 3))))
+(cl/run 2 [out]
+  (membero 3 out '(3 4 5 6 7)))
+;
