@@ -26,7 +26,8 @@
 
 (defn lookup [sym env]
   (match [env]
-         [([[(k :guard (partial = sym)) v] & r] :seq)] v
+         [([] :seq)] (throw (IllegalArgumentException. (str "unbound variable: " sym)))
+         [([[sym v] & r] :seq)] v
          [([[k v] & r] :seq)] (lookup sym r)))
 
 (defn eval-exp [expr env]
