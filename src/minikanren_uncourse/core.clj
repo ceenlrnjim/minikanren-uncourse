@@ -1,3 +1,22 @@
+
+;The following are the most important differences from version of miniKanren described in The Reasoned Schemer (TRS).
+;
+;-  #s is s#
+;-  #u is u#
+;-  Clojure core.logic's conde is actually the book's condi. 
+;     Core.logic offers no conde as is presented in the book. 
+;     This means the order of results may not match what is shown in the book when you use conde.
+;-  conde does not support defining an else clause. Just use a (s# ...) at the end of your conde.
+;-  Clojure has no way to create pairs (sequences with improper tails). 
+;     The core.logic lcons constructor fn provides this behavior. 
+;     llist is a convenience macro that expands out into nested lcons expressions.
+;-  nullo is emptyo
+;-  nilo unifies with nil
+;-  caro is firsto
+;-  cdro is resto
+
+
+
 (ns minikanren-uncourse.core
   (:require [clojure.core.logic :as cl]))
 
@@ -73,3 +92,30 @@
 (cl/run 2 [out]
   (membero 3 out '(3 4 5 6 7)))
 ;
+
+
+; ------------------------------------
+; anyo (from the paper)
+; ------------------------------------
+(defn anyo [g]
+  (cl/conde
+    [g]
+    [(anyo g)]))
+
+(cl/run 10 [q]
+        (anyo 
+          (cl/conde
+            [(cl/== 1 q)]
+            [(cl/== 2 q)]
+            [(cl/== 3 q)])))
+
+(def alwayso 
+  (anyo (cl/== false false)))
+
+(cl/run 5 [q]
+        (cl/conde
+          [(cl/== true q)]
+          [(cl/== false q)]
+          )
+        alwayso
+        (cl/== false q))
