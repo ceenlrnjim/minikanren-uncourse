@@ -18,26 +18,36 @@
 
 ; example of sequence matching
 (match [(list 1 2 3 4 5)]
-       [([_ _ 3 4 a] :seq)] [a]
-       )
+       [([_ _ 3 4 a] :seq)] [a])
 
 ; example of matching against function definition
 (match ['(fn [x] (+ x 2))]
-       [([fn [arg] body] :seq)] [arg body]
-       )
+       [([fn [arg] body] :seq)] [arg body])
+
+(defn lookup [sym env]
+  (if (contains? env sym) (get env sym) (throw (IllegalArgumentException. (str "unbound variable: " sym)))))
 
 (defn eval-exp [expr env]
   (match [expr]
-    [(x :guard symbol?)] :symbol
+          
+    ; Handle variable expansion
+    [(x :guard symbol?)] (lookup x env)
+          
+    ; Handle abstraction - defining functions
     [(['λ [arg] body] :seq)] :lambda
-     ; note that we're only supporting functions of one argument 
-     ; everything should be curried
+          
+    ; Handle function application
+       ; note that we're only supporting functions of one argument 
+       ; everything should be curried
     [([func arg] :seq)] :application
+          
+    ; Error - not a valid expression
     [_] :other-error))
 
+(eval-exp 'x {'x 5})
+(eval-exp 'y {'x 5})
 (eval-exp '(λ [a] (+ a 2)) [])
 (eval-exp '(boo [a] (+ a 2)) [])
-(eval-exp 'x [])
 (eval-exp '(foo 2) [])
 (eval-exp '((λ [a] (+ a 2)) 3) [])
 
