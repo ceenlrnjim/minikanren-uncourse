@@ -24,12 +24,10 @@
 (match ['(fn [x] (+ x 2))]
        [([fn [arg] body] :seq)] [arg body])
 
-;(defn lookup [sym env]
-;  (if (contains? env sym) (get env sym) (throw (IllegalArgumentException. (str "unbound variable: " sym)))))
-
 (defn lookup [sym env]
   (match [env]
-         [([[k v] & r] :seq)] (if (= k sym) v (recur sym r))))
+         [([[(k :guard (partial = sym)) v] & r] :seq)] v
+         [([[k v] & r] :seq)] (lookup sym r)))
 
 (defn eval-exp [expr env]
   (match [expr]
