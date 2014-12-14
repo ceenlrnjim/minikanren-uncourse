@@ -15,17 +15,6 @@
 ; - 2: lambdas / anonymous functions - abstraction
 ; - 3: function application
 
-(defn eval-exp [expr env]
-  (match [expr]
-    [(x :guard symbol?)] :symbol
-    [([lambda [arg] body] :seq)] :lambda
-    [([func arg] :seq)] :application
-         )  
-  )
-
-(eval-exp `(lambda [a] (+ a 2)) [])
-(eval-exp 'x [])
-(eval-exp '(foo 2) [])
 
 ; example of sequence matching
 (match [(list 1 2 3 4 5)]
@@ -37,4 +26,18 @@
        [([fn [arg] body] :seq)] [arg body]
        )
 
-(match [5])
+(defn eval-exp [expr env]
+  (match [expr]
+    [(x :guard symbol?)] :symbol
+    [(['λ [arg] body] :seq)] :lambda
+     ; note that we're only supporting functions of one argument 
+     ; everything should be curried
+    [([func arg] :seq)] :application
+    [_] :other-error))
+
+(eval-exp '(λ [a] (+ a 2)) [])
+(eval-exp '(boo [a] (+ a 2)) [])
+(eval-exp 'x [])
+(eval-exp '(foo 2) [])
+(eval-exp '((λ [a] (+ a 2)) 3) [])
+
