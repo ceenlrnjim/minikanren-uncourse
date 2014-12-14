@@ -24,8 +24,12 @@
 (match ['(fn [x] (+ x 2))]
        [([fn [arg] body] :seq)] [arg body])
 
+;(defn lookup [sym env]
+;  (if (contains? env sym) (get env sym) (throw (IllegalArgumentException. (str "unbound variable: " sym)))))
+
 (defn lookup [sym env]
-  (if (contains? env sym) (get env sym) (throw (IllegalArgumentException. (str "unbound variable: " sym)))))
+  (match [env]
+         [([[k v] & r] :seq)] (if (= k sym) v (recur sym r))))
 
 (defn eval-exp [expr env]
   (match [expr]
@@ -44,8 +48,10 @@
     ; Error - not a valid expression
     [_] :other-error))
 
-(eval-exp 'x {'x 5})
-(eval-exp 'y {'x 5})
+(eval-exp 'x [[ 'z 1] ['y 2] ['x 3]])
+(eval-exp 'y [[ 'z 1] ['y 2] ['x 3]])
+(eval-exp 'a [[ 'z 1] ['y 2] ['x 3]])
+
 (eval-exp '(λ [a] (+ a 2)) [])
 (eval-exp '(boo [a] (+ a 2)) [])
 (eval-exp '(foo 2) [])
