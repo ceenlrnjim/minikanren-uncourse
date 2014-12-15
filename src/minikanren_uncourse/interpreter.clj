@@ -48,8 +48,8 @@
     [(x :guard number?)] x
 
     ; add bindings to env (JLK extension)
-    [(['with [k v] body] :seq)]
-      (eval-exp body (extend-env env k v))
+    [(['with [(k :guard symbol?) v] body] :seq)]
+      (eval-exp body (extend-env env k (eval-exp v env)))
 
     ; TODO: add quote and list after implementing miniKanren version
           
@@ -93,6 +93,7 @@
 (eval-exp '((λ [z] z) y) [['y 5]])
 (eval-exp '(foo 2) [])
 (eval-exp '(foo 2) [['foo [:closure 'x 'x []]]])
+(eval-exp '(foo 2) [['foo (eval-exp '(λ [x] x) [])]])
 
 ; example of number extension
 (eval-exp '((λ [x] 42) y) [['y 5]])
@@ -102,6 +103,7 @@
             ((λ [x] y) z)) 
           [['y 100] ['z 2]])
 
+(eval-exp '(with [foo (λ [x] x)] (foo 100)) [])
 
 ; -----------------------------------------------------------------
 ; minikanren version
