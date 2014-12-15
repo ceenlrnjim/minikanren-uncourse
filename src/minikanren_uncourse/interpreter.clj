@@ -43,6 +43,13 @@
           
     ; Handle variable expansion
     [(x :guard symbol?)] (lookup x env)
+
+    ; numbers? (JLK extension)
+    [(x :guard number?)] x
+
+    ; add bindings to env (JLK extension)
+    [(['with [k v] body] :seq)]
+      (eval-exp body (extend-env env k v))
           
     ; Handle abstraction - defining functions
          ; Using a tagged vector to represent functions
@@ -84,3 +91,10 @@
 (eval-exp '((λ [z] z) y) [['y 5]])
 (eval-exp '(foo 2) [])
 
+; example of number extension
+(eval-exp '((λ [x] 42) y) [['y 5]])
+
+;example of binding variables
+(eval-exp '(with [y 42] 
+            ((λ [x] y) z)) 
+          [['y 100] ['z 2]])
