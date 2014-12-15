@@ -2,6 +2,8 @@
 ; -----------------------------------------------------------------
 ; uncourse #4 - relational interpreters
 ; write an interpreter for subset of scheme in relational style
+;
+; call-by-value, environment passing, lambda calculus in scheme
 ; -----------------------------------------------------------------
 (ns minikanren-uncourse.core
   (:use [clojure.core.match :only (match)])
@@ -107,4 +109,30 @@
 
 ; -----------------------------------------------------------------
 ; minikanren version
+;
+; call-by-value, environment passing, lambda calculus interpreter in miniKanren
 ; -----------------------------------------------------------------
+
+(defn lookupo [sym env out]
+  ; could use matche - start with conde and if you want to really shorten it up switch to matche
+  (conde
+    ; match the empty sequence - break recursion - don't need this clause since
+    ; a failed lookup is just a failure to unify with a value
+    ; (unless we want to keep track of error cases)
+     
+    ; first symbol in the list of pairs matches - we've found what we're looking for
+    [(fresh [pair r v] 
+            (conso pair r env)
+            (conso sym v pair) 
+            (conso out '() v) )]
+    ; first symbol doesn't match, recur over the rest of the pairs
+    [(fresh [pair r k v]
+            (conso pair r env)
+            (conso k v pair)
+            (!= sym k)
+            (lookupo sym r out))]
+    ))
+
+(run 1 [out] (lookupo :a [[:a 1] [:b 2]] out))
+(run 1 [out] (lookupo :b [[:a 1] [:b 2]] out))
+(run 1 [out] (lookupo out [[:a 1] [:b 2]] 2))
