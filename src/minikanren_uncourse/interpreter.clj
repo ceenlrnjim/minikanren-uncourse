@@ -50,6 +50,8 @@
     ; add bindings to env (JLK extension)
     [(['with [k v] body] :seq)]
       (eval-exp body (extend-env env k v))
+
+    ; TODO: add quote and list after implementing miniKanren version
           
     ; Handle abstraction - defining functions
          ; Using a tagged vector to represent functions
@@ -90,6 +92,7 @@
 ; examples of (successful and failed) application
 (eval-exp '((λ [z] z) y) [['y 5]])
 (eval-exp '(foo 2) [])
+(eval-exp '(foo 2) [['foo [:closure 'x 'x []]]])
 
 ; example of number extension
 (eval-exp '((λ [x] 42) y) [['y 5]])
@@ -98,3 +101,8 @@
 (eval-exp '(with [y 42] 
             ((λ [x] y) z)) 
           [['y 100] ['z 2]])
+
+
+; -----------------------------------------------------------------
+; minikanren version
+; -----------------------------------------------------------------
