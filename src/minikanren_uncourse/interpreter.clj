@@ -51,7 +51,7 @@
     [(x :guard number?)] x
 
     ; add bindings to env (JLK extension)
-    [(['with [(k :guard symbol?) v] body] :seq)]
+    [(['let [(k :guard symbol?) v] body] :seq)]
       (eval-exp body (extend-env env k (eval-exp v env)))
 
     ; TODO: add quote and list after implementing miniKanren version
@@ -102,11 +102,11 @@
 (eval-exp '((λ [x] 42) y) [['y 5]])
 
 ;example of binding variables
-(eval-exp '(with [y 42] 
+(eval-exp '(let [y 42] 
             ((λ [x] y) z)) 
           [['y 100] ['z 2]])
 
-(eval-exp '(with [foo (λ [x] x)] (foo 100)) [])
+(eval-exp '(let [foo (λ [x] x)] (foo 100)) [])
 
 ; -----------------------------------------------------------------
 ; minikanren version
@@ -144,6 +144,16 @@
     ; symbols
     [(symbolo/symbolo expr) (lookupo expr env out)]
 
+    ; numbers
+    [(symbolo/numbero expr) (== out expr)]
+    
+    ; let - introduce bindings
+    [(fresh [k v body extended-env]
+            (== expr (list 'let (list k v) body))
+            (extendo env k v extended-env)
+            (eval-expo body extended-env out)
+            )]
+
     ; abstractions - lambda definitions
     [(fresh [arg body] 
        ; TODO: why doesn't quoting a list work here?
@@ -163,3 +173,8 @@
 (run 1 [out] (eval-expo 'a [['a 1]] out))
 (run 1 [out] (eval-expo '(λ (x) x) [['y 42]] out))
 (run 1 [out] (eval-expo '((λ (x) x) y) [['y 42]] out))
+(run 1 [out] (eval-expo '((λ (x) x) y) out 42))
+(run 1 [out] (eval-expo 234 [] out))
+(run 1 [out] (eval-expo '((λ (x) x) 42) [] out))
+(run 1 [out] (eval-expo '(let (y 42) y) [] out))
+(run 1 [out] (eval-expo '(let (y 42) ((λ (x) x) y)) [] out))
