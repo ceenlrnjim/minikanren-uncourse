@@ -121,18 +121,23 @@
     ; (unless we want to keep track of error cases)
      
     ; first symbol in the list of pairs matches - we've found what we're looking for
-    [(fresh [pair r v] 
-            (conso pair r env)
-            (conso sym v pair) 
-            (conso out '() v) )]
+    ; matche will introduce logic values for you
+    [(fresh [r] (conso [sym out] r env))]
     ; first symbol doesn't match, recur over the rest of the pairs
-    [(fresh [pair r k v]
-            (conso pair r env)
-            (conso k v pair)
+    [(fresh [k v r]
+            (conso [k v] r env)
             (!= sym k)
-            (lookupo sym r out))]
-    ))
+            (lookupo sym r out))]))
 
-(run 1 [out] (lookupo :a [[:a 1] [:b 2]] out))
+(defn extendo [env k v out]
+  (conso [k v] env out))
+
+(run 2 [out] (lookupo :a [[:a 1] [:b 2] [:a 3]] out))
 (run 1 [out] (lookupo :b [[:a 1] [:b 2]] out))
+(run 1 [out] (lookupo :c [[:a 1] [:b 2]] out))
 (run 1 [out] (lookupo out [[:a 1] [:b 2]] 2))
+(run 1 [out] (lookupo out [[:a 1] [:b 2]] 3))
+(run 2 [out] (lookupo :a out 3))
+
+(run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] :d 4 out))
+(run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] out 4 [[:d 4] [:a 1] [:b 2] [:c 3]]))
