@@ -19,15 +19,19 @@
 ; - 3: function application
 
 
+
 ; example of sequence matching
 ; Note that list matching is not supported by core.match, using seq
 ;  which would technically match vectors etc. as well
+(comment 
 (match [(list 1 2 3 4 5)]
        [([_ _ 3 4 a] :seq)] [a])
 
 ; example of matching against function definition
 (match ['(fn [x] (+ x 2))]
        [(['fn [arg] body] :seq)] [arg body])
+
+)
 
 (defn lookup [sym env]
   (match [env]
