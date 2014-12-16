@@ -6,4 +6,5 @@
   :main minikanren-uncourse.core
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.match "0.3.0-alpha3"]
+                 [symbolo "0.1.0-SNAPSHOT"]
                  [org.clojure/core.logic "0.8.8"]])

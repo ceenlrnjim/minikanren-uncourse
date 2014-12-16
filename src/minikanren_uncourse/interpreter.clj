@@ -7,6 +7,7 @@
 ; -----------------------------------------------------------------
 (ns minikanren-uncourse.core
   (:use [clojure.core.match :only (match)])
+  (:require [symbolo.core :as symbolo])
   (:use clojure.core.logic))
 
 ; interpreter for call-by-value lambda calculus that scheme is based on
@@ -137,16 +138,28 @@
 (run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] :d 4 out))
 (run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] out 4 [[:d 4] [:a 1] [:b 2] [:c 3]]))
 
-(defn evalo [expr env out]
+(defn eval-expo [expr env out]
   (conde
-    [(== true (symbol? expr)) (lookupo expr env out)]
+
+    ; symbols
+    [(symbolo/symbolo expr) (lookupo expr env out)]
+
+    ; abstractions - lambda definitions
     [(fresh [arg body] 
-       (== expr (list 'λ (list arg) body)) (== out :lambda))]
-    [(fresh [e1 e2]
+       ; TODO: why doesn't quoting a list work here?
+       ;(== expr '(λ (arg) body))
+       (== expr (list 'λ (list arg) body)) 
+       (== out [:closure arg body env]))]
+
+    ; function application
+    [(fresh [e1 e2 body arg value extended-env closure-env]
             (== expr (list e1 e2))
-            (== out :application)
+            (eval-expo e1 env [:closure arg body closure-env])
+            (eval-expo e2 env value)
+            (extendo closure-env arg value extended-env)
+            (eval-expo body extended-env out)
             )]))
 
-(run 1 [out] (evalo 'a [['a 1]] out))
-(run 1 [out] (evalo '(λ (x) x) [] out))
-(run 1 [out] (evalo '(foo 4) [] out))
+(run 1 [out] (eval-expo 'a [['a 1]] out))
+(run 1 [out] (eval-expo '(λ (x) x) [['y 42]] out))
+(run 1 [out] (eval-expo '((λ (x) x) y) [['y 42]] out))
