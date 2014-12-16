@@ -115,19 +115,14 @@
 
 (defn lookupo [sym env out]
   ; could use matche - start with conde and if you want to really shorten it up switch to matche
-  (conde
-    ; match the empty sequence - break recursion - don't need this clause since
-    ; a failed lookup is just a failure to unify with a value
-    ; (unless we want to keep track of error cases)
-     
-    ; first symbol in the list of pairs matches - we've found what we're looking for
-    ; matche will introduce logic values for you
-    [(fresh [r] (conso [sym out] r env))]
-    ; first symbol doesn't match, recur over the rest of the pairs
-    [(fresh [k v r]
-            (conso [k v] r env)
-            (!= sym k)
-            (lookupo sym r out))]))
+  ; matche will introduce logic values for you
+  ; a failed lookup is just a failure to unify with a value
+  ; (unless we want to keep track of error cases)
+  (fresh [k v r]
+    (conso [k v] r env)
+    (conde
+      [(== k sym) (== v out)]
+      [(!= k sym) (lookupo sym r out)])))
 
 (defn extendo [env k v out]
   (conso [k v] env out))
