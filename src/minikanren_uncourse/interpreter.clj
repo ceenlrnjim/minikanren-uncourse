@@ -136,3 +136,17 @@
 
 (run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] :d 4 out))
 (run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] out 4 [[:d 4] [:a 1] [:b 2] [:c 3]]))
+
+(defn evalo [expr env out]
+  (conde
+    [(== true (symbol? expr)) (lookupo expr env out)]
+    [(fresh [arg body] 
+       (== expr (list 'λ (list arg) body)) (== out :lambda))]
+    [(fresh [e1 e2]
+            (== expr (list e1 e2))
+            (== out :application)
+            )]))
+
+(run 1 [out] (evalo 'a [['a 1]] out))
+(run 1 [out] (evalo '(λ (x) x) [] out))
+(run 1 [out] (evalo '(foo 4) [] out))
