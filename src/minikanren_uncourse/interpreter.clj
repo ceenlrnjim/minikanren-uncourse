@@ -58,7 +58,13 @@
     [(['let [(k :guard symbol?) v] body] :seq)]
       (eval-exp body (extend-env env k (eval-exp v env)))
 
-    ; TODO: add quote and list after implementing miniKanren version
+    ; TODO: conditional if
+    ; TODO: boolean
+    ; TODO: bool? zero?
+    ; TODO: cons car cdr
+    ; TODO: quote list
+    ; TODO: tagged numbers and arithmatic
+    
           
     ; Handle abstraction - defining functions
          ; Using a tagged vector to represent functions
@@ -136,6 +142,7 @@
 (defn extendo [env k v out]
   (conso [k v] env out))
 
+(comment 
 (run 2 [out] (lookupo :a [[:a 1] [:b 2] [:a 3]] out))
 (run 1 [out] (lookupo :b [[:a 1] [:b 2]] out))
 (run 1 [out] (lookupo :c [[:a 1] [:b 2]] out))
@@ -145,6 +152,7 @@
 
 (run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] :d 4 out))
 (run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] out 4 [[:d 4] [:a 1] [:b 2] [:c 3]]))
+)
 
 (defn eval-expo [expr env out]
   (conde
@@ -154,13 +162,19 @@
 
     ; numbers
     [(symbolo/numbero expr) (== out expr)]
+
+    ; TODO: conditional if
+    ; TODO: boolean
+    ; TODO: bool? zero?
+    ; TODO: cons car cdr
+    ; TODO: quote list
+    ; TODO: tagged numbers and arithmatic
     
     ; let - introduce bindings
     [(fresh [k v body extended-env]
             (== expr (list 'let (list k v) body))
             (extendo env k v extended-env)
-            (eval-expo body extended-env out)
-            )]
+            (eval-expo body extended-env out))]
 
     ; abstractions - lambda definitions
     [(fresh [arg body] 
@@ -175,8 +189,8 @@
             (eval-expo e1 env [:closure arg body closure-env])
             (eval-expo e2 env value)
             (extendo closure-env arg value extended-env)
-            (eval-expo body extended-env out)
-            )]))
+            (eval-expo body extended-env out))]))
+
 (comment
 (run 1 [out] (eval-expo 'a [['a 1]] out))
 (run 1 [out] (eval-expo '(λ (x) x) [['y 42]] out))
