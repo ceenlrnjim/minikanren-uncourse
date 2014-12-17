@@ -49,7 +49,7 @@
   (match [expr]
           
     ; Handle variable expansion
-    [(x :guard symbol?)] (lookup x env)
+    [(x :guard symbol?) ] (lookup x env)
 
     ; numbers? (JLK extension)
     [(x :guard number?)] x
@@ -58,8 +58,16 @@
     [(['let [(k :guard symbol?) v] body] :seq)]
       (eval-exp body (extend-env env k (eval-exp v env)))
 
-    ; TODO: conditional if
-    ; TODO: boolean
+    ; booleans - #t/#f causes problems due to # (reader macro?)
+    [:t] true
+    [:f] false
+
+    ; if conditional
+    [(['if pred t f] :seq)]
+      (if (= :t (eval-exp pred env)) 
+        (eval-exp t env)
+        (eval-exp f env))
+
     ; TODO: bool? zero?
     ; TODO: cons car cdr
     ; TODO: quote list
@@ -96,6 +104,7 @@
 
 ; examples of variable lookup
 (comment
+  
 (eval-exp 'x [['z 1] ['y 2] ['x 3]])
 (eval-exp 'y [['z 1] ['y 2] ['x 3]])
 (eval-exp 'a [['z 1] ['y 2] ['x 3]])
@@ -111,6 +120,7 @@
 
 ; example of number extension
 (eval-exp '((λ [x] 42) y) [['y 5]])
+(eval-exp '())
 
 ;example of binding variables
 (eval-exp '(let [y 42] 
@@ -118,6 +128,10 @@
           [['y 100] ['z 2]])
 
 (eval-exp '(let [foo (λ [x] x)] (foo 100)) [])
+
+; if and booleans
+(eval-exp '(if y 1 0) [['y :t]])
+(eval-exp '(if y 1 0) [['y :f]])
 
 )
 
