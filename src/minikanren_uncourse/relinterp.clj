@@ -50,25 +50,35 @@
 
     ; conditional if
     [(fresh [pred te fe pred-value]
-            (== expr (list 'if pred te fe))
+            (== expr ['if pred te fe])
             (eval-expo pred env pred-value)
             (conde
               [(== pred-value ':t) (eval-expo te env out)]
               [(== pred-value ':f) (eval-expo fe env out)]))]
 
+    ; empty list
+    ;[(== expr '()) (== out '())]
+
+    ; quote
+    [( == expr ['quote out])]
+
     ; cons
-    [(fresh [h t]
+    [(fresh [he te hv tv]
             ; TODO: check that t is a list?
-            (== expr (list 'cons h t))
-            (== out (list h t)))]
+            (== expr (list 'cons he te))
+            (eval-expo he env hv)
+            (eval-expo te env tv)
+            (== out (list hv tv)))]
      
     ; car
-    [(fresh [t]
-            (== expr (list 'car (list out t))))]
+    [(fresh [le t]
+            (== expr ['car le])
+            (eval-expo le env [out t]))]
      
     ; cdr
-    [(fresh [h]
-            (== expr (list 'cdr (list h out))))]
+    [(fresh [h le]
+            (== expr ['cdr le])
+            (eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
     ; TODO: quote list
@@ -76,20 +86,18 @@
     
     ; let - introduce bindings
     [(fresh [k v body extended-env]
-            (== expr (list 'let (list k v) body))
+            (== expr ['let [k v] body])
             (extendo env k v extended-env)
             (eval-expo body extended-env out))]
 
     ; abstractions - lambda definitions
     [(fresh [arg body] 
-       ; TODO: why doesn't quoting a list work here?
-       ;(== expr '(λ (arg) body))
-       (== expr (list 'λ (list arg) body)) 
+       (== expr ['λ [arg] body] )
        (== out [:closure arg body env]))]
 
     ; function application
     [(fresh [e1 e2 body arg value extended-env closure-env]
-            (== expr (list e1 e2))
+            (== expr [e1 e2])
             (eval-expo e1 env [:closure arg body closure-env])
             (eval-expo e2 env value)
             (extendo closure-env arg value extended-env)
@@ -104,9 +112,21 @@
 (run 1 [out] (eval-expo '((λ (x) x) 42) [] out))
 (run 1 [out] (eval-expo '(let (y 42) y) [] out))
 (run 1 [out] (eval-expo '(let (y 42) ((λ (x) x) y)) [] out))
-  (run 1 [out] (eval-expo '(if x y z) [['x :f] ['y 1] ['z 2]] out))
-  (run 1 [out] (eval-expo '(cons 4 ()) [] out))
-  (run 1 [out] (eval-expo '(cons 4 (2 ())) [] out))
-  (run 1 [out] (eval-expo '(car (4 (2 ()))) [] out))
-  (run 1 [out] (eval-expo '(cdr (4 (2 ()))) [] out))
+  (run 1 [out] (eval-expo '(if x y z) [['x :t] ['y 1] ['z 2]] out))
+  (run 1 [out] (eval-expo '(cons 4 (quote ())) [] out))
+  (run 1 [out] (eval-expo '(cons 4 (quote (2 ()))) [] out))
+  (run 1 [out] (eval-expo '(car (quote (4 (2 ())))) [] out))
+  (run 1 [out] (eval-expo '(cdr (quote (4 (2 ())))) [] out))
+  (run 1 [out] (eval-expo '(car (quote (42 ()))) [] out))
+  (run 1 [out] (eval-expo '(car (quote (x ()))) [['x 5]] out))
+  (run 1 [out] (eval-expo '(cons ((λ (x) x) y) (quote ())) [['y 42]] out))
+  (run 1 [out] (eval-expo '(car (cons ((λ (x) x) y) (quote ()))) [['y 42]] out))
+  (run 1 [out] (eval-expo '() [] out))
+
+
+  (run 1 [out] (eval-expo '(quote (car (cons ((λ (x) x) y) (quote ())))) [['y 42]] out))
+
 )
+
+
+

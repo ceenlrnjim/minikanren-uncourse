@@ -66,6 +66,8 @@
         (eval-exp t env)
         (eval-exp f env))
 
+    [(['cons h t] :seq)]
+
     ; TODO: bool? zero?
     ; TODO: cons car cdr
     ; TODO: quote list
