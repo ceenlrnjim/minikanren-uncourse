@@ -172,13 +172,37 @@
   (conde
 
     ; symbols
-    [(symbolo/symbolo expr) (lookupo expr env out)]
+    [(symbolo/symbolo expr) (lookupo expr env out) (!= expr ':t) (!= expr ':f)]
 
     ; numbers
     [(symbolo/numbero expr) (== out expr)]
 
-    ; TODO: conditional if
-    ; TODO: boolean
+    ; booleans
+    [(conde [(== expr ':t) (== out true)]
+            [(== expr ':f) (== out false)])]
+
+    ; conditional if
+    [(fresh [pred te fe pred-value]
+            (== expr (list 'if pred te fe))
+            (eval-expo pred env pred-value)
+            (conde
+              [(== pred-value ':t) (eval-expo te env out)]
+              [(== pred-value ':f) (eval-expo fe env out)]))]
+
+    ; cons
+    [(fresh [h t]
+            ; TODO: conde for "nil"
+            (== expr (list 'cons h t))
+            (== out (list h t)))]
+     
+    ; car
+    [(fresh [t]
+            (== expr (list 'car (list out t))))]
+     
+    ; cdr
+    [(fresh [h]
+            (== expr (list 'cdr (list h out))))]
+    
     ; TODO: bool? zero?
     ; TODO: cons car cdr
     ; TODO: quote list
@@ -214,4 +238,9 @@
 (run 1 [out] (eval-expo '((λ (x) x) 42) [] out))
 (run 1 [out] (eval-expo '(let (y 42) y) [] out))
 (run 1 [out] (eval-expo '(let (y 42) ((λ (x) x) y)) [] out))
+  (run 1 [out] (eval-expo '(if x y z) [['x :f] ['y 1] ['z 2]] out))
+  (run 1 [out] (eval-expo '(cons 4 ()) [] out))
+  (run 1 [out] (eval-expo '(cons 4 (2 ())) [] out))
+  (run 1 [out] (eval-expo '(car (4 (2 ()))) [] out))
+  (run 1 [out] (eval-expo '(cdr (4 (2 ()))) [] out))
 )
