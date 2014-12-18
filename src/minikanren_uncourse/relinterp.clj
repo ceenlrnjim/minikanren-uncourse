@@ -60,7 +60,7 @@
     ;[(== expr '()) (== out '())]
 
     ; quote
-    [( == expr ['quote out])]
+    [(== expr ['quote out])]
 
     ; cons
     [(fresh [he te hv tv]
