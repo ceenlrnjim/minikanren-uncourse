@@ -126,7 +126,7 @@
   (run 1 [out] (eval-expo `(cdr (quote (4 (2 ())))) [] out))
   (run 1 [out] (eval-expo `(car (quote (42 ()))) [] out))
   (run 1 [out] (eval-expo `(car (quote (x ()))) [[`x 5]] out))
-  (run 1 [out] (eval-expo `(cons ((λ (x) x) y) (quote ())) [['y 42]] out))
+  (run 1 [out] (eval-expo `(cons ((λ (x) x) y) (quote ())) [[`y 42]] out))
 
   (run 1 [out] (eval-expo `(car (cons ((λ (x) x) y) (quote ()))) [[`y 42]] out))
 
