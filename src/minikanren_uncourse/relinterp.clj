@@ -50,7 +50,7 @@
 
     ; conditional if
     [(fresh [pred te fe pred-value]
-            (== expr ['if pred te fe])
+            (== expr [`if pred te fe])
             (eval-expo pred env pred-value)
             (conde
               [(== pred-value ':t) (eval-expo te env out)]
@@ -65,19 +65,19 @@
     ; cons
     [(fresh [he te hv tv]
             ; TODO: check that t is a list?
-            (== expr (list 'cons he te))
+            (== expr [`cons he te])
             (eval-expo he env hv)
             (eval-expo te env tv)
             (== out (list hv tv)))]
      
     ; car
     [(fresh [le t]
-            (== expr ['car le])
+            (== expr [`car le])
             (eval-expo le env [out t]))]
      
     ; cdr
     [(fresh [h le]
-            (== expr ['cdr le])
+            (== expr [`cdr le])
             (eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
@@ -86,13 +86,13 @@
     
     ; let - introduce bindings
     [(fresh [k v body extended-env]
-            (== expr ['let [k v] body])
+            (== expr [`let [k v] body])
             (extendo env k v extended-env)
             (eval-expo body extended-env out))]
 
     ; abstractions - lambda definitions
     [(fresh [arg body] 
-       (== expr ['λ [arg] body] )
+       (== expr [`λ [arg] body] )
        (== out [:closure arg body env]))]
 
     ; function application
@@ -104,27 +104,38 @@
             (eval-expo body extended-env out))]))
 
 (comment
-(run 1 [out] (eval-expo 'a [['a 1]] out))
-(run 1 [out] (eval-expo '(λ (x) x) [['y 42]] out))
-(run 1 [out] (eval-expo '((λ (x) x) y) [['y 42]] out))
-(run 1 [out] (eval-expo '((λ (x) x) y) out 42))
-(run 1 [out] (eval-expo 234 [] out))
-(run 1 [out] (eval-expo '((λ (x) x) 42) [] out))
-(run 1 [out] (eval-expo '(let (y 42) y) [] out))
-(run 1 [out] (eval-expo '(let (y 42) ((λ (x) x) y)) [] out))
-  (run 1 [out] (eval-expo '(if x y z) [['x :t] ['y 1] ['z 2]] out))
-  (run 1 [out] (eval-expo '(cons 4 (quote ())) [] out))
-  (run 1 [out] (eval-expo '(cons 4 (quote (2 ()))) [] out))
-  (run 1 [out] (eval-expo '(car (quote (4 (2 ())))) [] out))
-  (run 1 [out] (eval-expo '(cdr (quote (4 (2 ())))) [] out))
-  (run 1 [out] (eval-expo '(car (quote (42 ()))) [] out))
-  (run 1 [out] (eval-expo '(car (quote (x ()))) [['x 5]] out))
-  (run 1 [out] (eval-expo '(cons ((λ (x) x) y) (quote ())) [['y 42]] out))
-  (run 1 [out] (eval-expo '(car (cons ((λ (x) x) y) (quote ()))) [['y 42]] out))
-  (run 1 [out] (eval-expo '() [] out))
+  (run 1 [out] (eval-expo `a [[`a 1]] out))
 
+  (run 1 [out] (eval-expo `(λ (x) x) [[`y 42]] out))
+  (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
+  (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
+
+  (run 1 [out] (eval-expo 234 [] out))
+  (run 1 [out] (eval-expo `((λ (x) x) 42) [] out))
+  (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
+
+  (run 1 [out] (eval-expo `(let (y 42) y) [] out))
+  (run 1 [out] (eval-expo `(let (y 42) ((λ (x) x) y)) [] out))
+
+  (run 1 [out] (eval-expo `(if x y z) [[`x :t] [`y 1] [`z 2]] out))
+  (run 1 [out] (eval-expo `(if ~out y z) [['x :t] ['y 1] ['z 2]] 1))
+
+  (run 1 [out] (eval-expo `(cons 4 (quote ())) [] out))
+  (run 1 [out] (eval-expo `(cons 4 (quote (2 ()))) [] out))
+  (run 1 [out] (eval-expo `(car (quote (4 (2 ())))) [] out))
+  (run 1 [out] (eval-expo `(cdr (quote (4 (2 ())))) [] out))
+  (run 1 [out] (eval-expo `(car (quote (42 ()))) [] out))
+  (run 1 [out] (eval-expo `(car (quote (x ()))) [[`x 5]] out))
+  (run 1 [out] (eval-expo `(cons ((λ (x) x) y) (quote ())) [['y 42]] out))
+
+  (run 1 [out] (eval-expo `(car (cons ((λ (x) x) y) (quote ()))) [[`y 42]] out))
+
+  (run 1 [out] (eval-expo `() [] out))
 
   (run 1 [out] (eval-expo '(quote (car (cons ((λ (x) x) y) (quote ())))) [['y 42]] out))
+
+  ; TODO: need to decide on quote type = I think syntax quote will be required if I want to run backwards
+  (run 1 [out] (eval-expo `(car ~out) [] 4))
 
 )
 
