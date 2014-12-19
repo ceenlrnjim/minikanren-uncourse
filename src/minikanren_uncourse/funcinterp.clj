@@ -69,9 +69,9 @@
     ; list/cons/car/cdr
     [([] :seq)] '()
     [(['quote x] :seq)] x
-    [(['cons h t] :seq)] (list (eval-exp h env) (eval-exp t env))
+    [(['cons h (t :guard list?)] :seq)] (list (eval-exp h env) (eval-exp t env))
     [(['car (l :guard list?)] :seq)] (first (eval-exp l env))
-    [(['cdr (l :guard list?)] :seq)] (first (rest (eval-exp l env)))
+    [(['cdr (l :guard list?)] :seq)] (second (eval-exp l env))
 
     ; TODO: bool? zero?
     ; TODO: cons car cdr
@@ -141,9 +141,6 @@
 (eval-exp '(cons 4 (quote (2 ()))) [])
 (eval-exp '(car (quote (4 (2 ()))) ) [])
 (eval-exp '(cdr (quote (4 (2 ()))) ) [])
-
-(first  (list 4 '(3 (2 (1 ())))))
-(first (rest  (list 4 '(3 (2 (1 ()))))))
 
 )
 
