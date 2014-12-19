@@ -66,7 +66,12 @@
         (eval-exp t env)
         (eval-exp f env))
 
-    [(['cons h t] :seq)]
+    ; list/cons/car/cdr
+    [([] :seq)] '()
+    [(['quote x] :seq)] x
+    [(['cons h t] :seq)] (list (eval-exp h env) (eval-exp t env))
+    [(['car (l :guard list?)] :seq)] (first (eval-exp l env))
+    [(['cdr (l :guard list?)] :seq)] (first (rest (eval-exp l env)))
 
     ; TODO: bool? zero?
     ; TODO: cons car cdr
@@ -132,6 +137,13 @@
 ; if and booleans
 (eval-exp '(if y 1 0) [['y :t]])
 (eval-exp '(if y 1 0) [['y :f]])
+
+(eval-exp '(cons 4 (quote (2 ()))) [])
+(eval-exp '(car (quote (4 (2 ()))) ) [])
+(eval-exp '(cdr (quote (4 (2 ()))) ) [])
+
+(first  (list 4 '(3 (2 (1 ())))))
+(first (rest  (list 4 '(3 (2 (1 ()))))))
 
 )
 
