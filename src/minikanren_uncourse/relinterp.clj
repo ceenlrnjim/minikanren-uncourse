@@ -16,23 +16,26 @@
   ; (unless we want to keep track of error cases)
   (fresh [k v r]
     (conso [k v] r env)
+    (symbolo/symbolo k)
+    (symbolo/symbolo sym)
     (conde
       [(== k sym) (== v out)]
       [(!= k sym) (lookupo sym r out)])))
 
 (defn extendo [env k v out]
+  (symbolo/symbolo k)
   (conso [k v] env out))
 
 (comment 
-(run 2 [out] (lookupo :a [[:a 1] [:b 2] [:a 3]] out))
-(run 1 [out] (lookupo :b [[:a 1] [:b 2]] out))
-(run 1 [out] (lookupo :c [[:a 1] [:b 2]] out))
-(run 1 [out] (lookupo out [[:a 1] [:b 2]] 2))
-(run 1 [out] (lookupo out [[:a 1] [:b 2]] 3))
-(run 2 [out] (lookupo :a out 3))
+(run 2 [out] (lookupo `a [[`a 1] [`b 2] [`a 3]] out))
+(run 1 [out] (lookupo `b [[`a 1] [`b 2]] out))
+(run 1 [out] (lookupo `c [[`a 1] [`b 2]] out))
+(run 1 [out] (lookupo out [[`a 1] [`b 2]] 2))
+(run 1 [out] (lookupo out [[`a 1] [`b 2]] 3))
+(run 1 [out] (lookupo `a out 3))
 
-(run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] :d 4 out))
-(run 1 [out] (extendo [[:a 1] [:b 2] [:c 3]] out 4 [[:d 4] [:a 1] [:b 2] [:c 3]]))
+(run 1 [out] (extendo [['a 1] ['b 2] ['c 3]] 'd 4 out))
+(run 1 [out] (extendo [['a 1] ['b 2] ['c 3]] out 4 [['d 4] ['a 1] ['b 2] ['c 3]]))
 )
 
 (defn eval-expo [expr env out]
@@ -81,7 +84,7 @@
             (eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
-    ; TODO: quote list
+    ; TODO: list
     ; TODO: tagged numbers and arithmatic
     
     ; let - introduce bindings
@@ -93,6 +96,7 @@
     ; abstractions - lambda definitions
     [(fresh [arg body] 
        (== expr [`λ [arg] body] )
+       (symbolo/symbolo arg)
        (== out [:closure arg body env]))]
 
     ; function application
