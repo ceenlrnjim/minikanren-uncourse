@@ -86,14 +86,17 @@
   )
 
 (defn unboundo [v env]
-  (conde
-    [(== env '())]
-    [(fresh [h t r]
-            (conso [h t] r env)
-            (!= h v)
-            (unboundo v r))]))
+  (fresh []
+    (symbolo/symbolo v)
+    (conde
+      [(== env '())]
+      [(fresh [h t r]
+              (conso [h t] r env)
+              (!= h v)
+              (unboundo v r))])))
 
 (comment
+  (run 1 [q] (unboundo 5 []))
   (run 1 [q] (unboundo 'x []))
   (run 1 [q] (unboundo 'x [['x 5]]))
   (run 1 [q] (unboundo 'x [['y 5]]))
