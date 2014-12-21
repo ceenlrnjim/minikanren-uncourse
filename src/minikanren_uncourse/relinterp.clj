@@ -38,6 +38,24 @@
 (run 1 [out] (extendo [['a 1] ['b 2] ['c 3]] out 4 [['d 4] ['a 1] ['b 2] ['c 3]]))
 )
 
+; recursive "maping" function that applies eval to all the exprs
+(defn eval-exp*o [exprs env out]
+  (conde
+    [(== exprs []) (== out '())]
+    [(fresh [h t hv tv] 
+            (conso h t exprs)
+            (eval-expo h env hv)
+            (conso hv tv out)
+            (eval-exp*o t env tv)
+            )]))
+
+(comment
+  (run 1 [h t] (conso h t '(z)))
+  (run 1 [q] (resto '(z) q))
+  (run 1 [q] (eval-exp*o '(1 z) [['y 1] ['z 5]] q))
+  (run 1 [q] (eval-exp*o '(y 2 3 4 z) [['y 1] ['z 5]] q))
+  )
+
 (defn eval-expo [expr env out]
   (conde
 
@@ -65,6 +83,12 @@
     ; quote
     [(== expr ['quote out])]
 
+    ; list
+    [(fresh [args] 
+            (conso `list args expr)
+            (eval-exp*o args env out)
+            )]
+
     ; cons
     [(fresh [he te hv tv]
             ; TODO: check that t is a list?
@@ -84,8 +108,8 @@
             (eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
-    ; TODO: list
     ; TODO: tagged numbers and arithmatic
+    ; TODO: mapo that simulates map (as used in list)
     
     ; let - introduce bindings
     [(fresh [k v body extended-env]
@@ -102,6 +126,7 @@
     ; function application
     [(fresh [e1 e2 body arg value extended-env closure-env]
             (== expr [e1 e2])
+            ; TODO: this will collide with (quote x)
             (eval-expo e1 env [:closure arg body closure-env])
             (eval-expo e2 env value)
             (extendo closure-env arg value extended-env)
@@ -140,6 +165,9 @@
 
   ; TODO: need to decide on quote type = I think syntax quote will be required if I want to run backwards
   (run 1 [out] (eval-expo `(car ~out) [] 4))
+
+  ; list
+  (run 2 [out] (eval-expo `(list a b c d e) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
 
 )
 

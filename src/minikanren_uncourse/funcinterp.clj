@@ -43,6 +43,11 @@
 (defn extend-env [env k v]
   (cons [k v] env))
 
+(defn eval-exp* [expr* env]
+  (cond
+    (empty? expr*) '()
+    :else (cons (eval-exp (first expr*) env) (eval-exp* (rest expr*) env))))
+
 (defn eval-exp [expr env]
   (match [expr]
           
@@ -66,11 +71,24 @@
         (eval-exp t env)
         (eval-exp f env))
 
-    ; list/cons/car/cdr
+
+    ; empty list
     [([] :seq)] '()
+         
+    ; quote
     [(['quote x] :seq)] x
+
+    [(['list & exprs] :seq)] 
+         ;(map #(eval-exp % env) exprs)
+         (eval-exp* exprs env)
+
+    ; cons
     [(['cons h (t :guard list?)] :seq)] (list (eval-exp h env) (eval-exp t env))
+         
+    ; car
     [(['car (l :guard list?)] :seq)] (first (eval-exp l env))
+
+    ; cdr
     [(['cdr (l :guard list?)] :seq)] (second (eval-exp l env))
 
     ; TODO: bool? zero?
@@ -110,38 +128,45 @@
 ; examples of variable lookup
 (comment
   
-(eval-exp 'x [['z 1] ['y 2] ['x 3]])
-(eval-exp 'y [['z 1] ['y 2] ['x 3]])
-(eval-exp 'a [['z 1] ['y 2] ['x 3]])
+  (eval-exp 'x [['z 1] ['y 2] ['x 3]])
+  (eval-exp 'y [['z 1] ['y 2] ['x 3]])
+  (eval-exp 'a [['z 1] ['y 2] ['x 3]])
 
-; example of abstraction
-(eval-exp '(λ [a] (+ a 2)) [['z 1] ['y 2] ['x 3]])
+  ; example of abstraction
+  (eval-exp '(λ [a] (+ a 2)) [['z 1] ['y 2] ['x 3]])
 
-; examples of (successful and failed) application
-(eval-exp '((λ [z] z) y) [['y 5]])
-(eval-exp '(foo 2) [])
-(eval-exp '(foo 2) [['foo [:closure 'x 'x []]]])
-(eval-exp '(foo 2) [['foo (eval-exp '(λ [x] x) [])]])
+  ; examples of (successful and failed) application
+  (eval-exp '((λ [z] z) y) [['y 5]])
+  (eval-exp '(foo 2) [])
+  (eval-exp '(foo 2) [['foo [:closure 'x 'x []]]])
+  (eval-exp '(foo 2) [['foo (eval-exp '(λ [x] x) [])]])
 
-; example of number extension
-(eval-exp '((λ [x] 42) y) [['y 5]])
-(eval-exp '())
+  ; example of number extension
+  (eval-exp '((λ [x] 42) y) [['y 5]])
+  (eval-exp '())
 
-;example of binding variables
-(eval-exp '(let [y 42] 
-            ((λ [x] y) z)) 
-          [['y 100] ['z 2]])
+  ;example of binding variables
+  (eval-exp '(let [y 42] 
+              ((λ [x] y) z)) 
+            [['y 100] ['z 2]])
 
-(eval-exp '(let [foo (λ [x] x)] (foo 100)) [])
+  (eval-exp '(let [foo (λ [x] x)] (foo 100)) [])
 
-; if and booleans
-(eval-exp '(if y 1 0) [['y :t]])
-(eval-exp '(if y 1 0) [['y :f]])
+  ; if and booleans
+  (eval-exp '(if y 1 0) [['y :t]])
+  (eval-exp '(if y 1 0) [['y :f]])
 
-(eval-exp '(cons 4 (quote (2 ()))) [])
-(eval-exp '(car (quote (4 (2 ()))) ) [])
-(eval-exp '(cdr (quote (4 (2 ()))) ) [])
+  (eval-exp '(quote (1 2 3 4)) [])
+  (eval-exp '(quote (λ (x) (λ (y) (cons x (cons y (quote ())))))) [])
+  (eval-exp '(cons 4 (quote (2 ()))) [])
+  (eval-exp '(car (quote (4 (2 ()))) ) [])
+  (eval-exp '(cdr (quote (4 (2 ()))) ) [])
+
+  ; list
+  (eval-exp '(list 1 2 3 4 5 (car (quote (2 (quote ()))))) [])
 
 )
 
-
+; scheme list implementation
+; ((lambda args args) 1 2 3 4 5)
+; => (1 2 3 4 5)
