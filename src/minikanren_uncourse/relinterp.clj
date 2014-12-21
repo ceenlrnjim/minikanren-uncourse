@@ -58,20 +58,32 @@
 
 ; can I build a cheesy version of absento that will hopefully work well
 ; enough to keep up with the class?
-;(defn absento [x l]
-  ;(conde
-    ;; empty list
-    ;[(== l [])]
-    ;; non-list
-    ;[()]
-    ;; non- empty list
-    ;[(fresh [h t]
-            ;(conso h t l)
-            ;(conde
-              ;[(!= h x)
-               ;(absento x t)]))]))
+(defn absento [x l]
+  (fresh [h t]
+    (conda
+      ; empty list
+      [(== l [])]
+      [(== x l) (== :t :f)]
+      [(conso x t l) (== :t :f)] ;fail where x is in the head of the list
+      ; non- empty list
+      [(conso h t l) (!= h x) (absento x t)]
+      [(!= x l)]
+      )))
+
+(comment
+  (run 1 [q] (absento 'x 'x))
+  (run 1 [q] (absento 'x 'y))
+  (run 1 [q] (absento 'x '()))
+  (run 1 [q] (absento 'x '(x)))
+  (run 1 [q] (absento 'x '(y)))
+  (run 1 [q] (absento 'x '(1 2 3 4 y 5 6)))
+  (run 1 [q] (absento 'x '(1 2 3 4 x 5 6)))
+  (run 1 [q] (absento :closure '(1 2 3 4 :closure 5 6)))
+  (run 1 [q] (absento :closure '(1 2 3 4 :not-closure 5 6)))
+  )
 
 (defn eval-expo [expr env out]
+  ;(absento :closure expr)
   (conde
 
     ; symbols
@@ -97,7 +109,7 @@
 
     ; quote
     ; TODO: make quoting a [:closure] invalid
-    [(== expr ['quote out])]
+    [(== expr ['quote out]) (absento :closure out)]
 
     ; list
     [(fresh [args] 
@@ -193,6 +205,7 @@
   ; minikanren quotes the closure instead of giving us
   ; the expression that evaluates to the closure since we have quote
   (run 1 [q] (eval-expo q [] [:closure `x `x []]))
+
 )
 
 
