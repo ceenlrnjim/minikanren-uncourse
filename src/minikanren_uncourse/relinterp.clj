@@ -44,8 +44,9 @@
     [(== exprs []) (== out '())]
     [(fresh [h t hv tv] ; (h)ead (t)ail (h)ead-(v)alue (t)ail-(v)alue
             (conso h t exprs)
-            (eval-expo h env hv)
             (conso hv tv out)
+            ; we want our simpler conditions before "serious" recursive calls
+            (eval-expo h env hv)
             (eval-exp*o t env tv))]))
 
 (comment
@@ -54,6 +55,21 @@
   (run 1 [q] (eval-exp*o '(1 z) [['y 1] ['z 5]] q))
   (run 1 [q] (eval-exp*o '(y 2 3 4 z) [['y 1] ['z 5]] q))
   )
+
+; can I build a cheesy version of absento that will hopefully work well
+; enough to keep up with the class?
+;(defn absento [x l]
+  ;(conde
+    ;; empty list
+    ;[(== l [])]
+    ;; non-list
+    ;[()]
+    ;; non- empty list
+    ;[(fresh [h t]
+            ;(conso h t l)
+            ;(conde
+              ;[(!= h x)
+               ;(absento x t)]))]))
 
 (defn eval-expo [expr env out]
   (conde
@@ -80,6 +96,7 @@
     ;[(== expr '()) (== out '())]
 
     ; quote
+    ; TODO: make quoting a [:closure] invalid
     [(== expr ['quote out])]
 
     ; list
@@ -166,7 +183,16 @@
 
   ; list
   (run 2 [out] (eval-expo `(list a b c d e 6 7 8) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
+  (run 2 [out] (eval-expo out `() `(5 6 [:closure z y [[`y 7]]])))
 
+  ; both the following return the same closure
+  (run* [q] (eval-expo `(λ (x) x) [] q))
+  (run* [q] (eval-expo `((λ (y) y) 
+                            (λ (x) x)) [] q))
+
+  ; minikanren quotes the closure instead of giving us
+  ; the expression that evaluates to the closure since we have quote
+  (run 1 [q] (eval-expo q [] [:closure `x `x []]))
 )
 
 
