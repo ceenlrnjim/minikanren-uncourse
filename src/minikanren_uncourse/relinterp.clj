@@ -42,12 +42,11 @@
 (defn eval-exp*o [exprs env out]
   (conde
     [(== exprs []) (== out '())]
-    [(fresh [h t hv tv] 
+    [(fresh [h t hv tv] ; (h)ead (t)ail (h)ead-(v)alue (t)ail-(v)alue
             (conso h t exprs)
             (eval-expo h env hv)
             (conso hv tv out)
-            (eval-exp*o t env tv)
-            )]))
+            (eval-exp*o t env tv))]))
 
 (comment
   (run 1 [h t] (conso h t '(z)))
@@ -86,8 +85,7 @@
     ; list
     [(fresh [args] 
             (conso `list args expr)
-            (eval-exp*o args env out)
-            )]
+            (eval-exp*o args env out))]
 
     ; cons
     [(fresh [he te hv tv]
@@ -167,7 +165,7 @@
   (run 1 [out] (eval-expo `(car ~out) [] 4))
 
   ; list
-  (run 2 [out] (eval-expo `(list a b c d e) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
+  (run 2 [out] (eval-expo `(list a b c d e 6 7 8) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
 
 )
 
