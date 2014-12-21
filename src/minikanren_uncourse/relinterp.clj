@@ -66,9 +66,8 @@
       [(== x l) (== :t :f)]
       [(conso x t l) (== :t :f)] ;fail where x is in the head of the list
       ; non- empty list
-      [(conso h t l) (absento x h) (absento x t)]
-      [(!= x l)]
-      )))
+      [(conso h t l) (absento x t)] ; TODO: do I want (absento x h) as well?
+      [(!= x l)])))
 
 (comment
   (run 1 [q] (absento 'x 'x))
@@ -86,6 +85,21 @@
   (run 1 [q] (absento :closure '(1 2 3 4 [:not-closure] 5 6)))
   )
 
+(defn unboundo [v env]
+  (conde
+    [(== env '())]
+    [(fresh [h t r]
+            (conso [h t] r env)
+            (!= h v)
+            (unboundo v r))]))
+
+(comment
+  (run 1 [q] (unboundo 'x []))
+  (run 1 [q] (unboundo 'x [['x 5]]))
+  (run 1 [q] (unboundo 'x [['y 5]]))
+  (run 1 [q] (unboundo 'x [['y 5] ['x 10]]))
+  )
+
 (defn eval-expo [expr env out]
   (conde
 
@@ -100,23 +114,25 @@
             [(== expr ':f) (== out false)])]
 
     ; conditional if
-    [(fresh [pred te fe pred-value]
-            (== expr [`if pred te fe])
-            (eval-expo pred env pred-value)
-            (conde
-              [(== pred-value ':t) (eval-expo te env out)]
-              [(== pred-value ':f) (eval-expo fe env out)]))]
+    ;[(fresh [pred te fe pred-value]
+            ;(== expr [`if pred te fe])
+            ;(eval-expo pred env pred-value)
+            ;(conde
+              ;[(== pred-value ':t) (eval-expo te env out)]
+              ;[(== pred-value ':f) (eval-expo fe env out)]))]
 
     ; empty list
     ;[(== expr '()) (== out '())]
 
     ; quote
-    ; TODO: make quoting a [:closure] invalid
-    [(== expr ['quote out]) (absento :closure out)]
+    [(== expr ['quote out]) 
+     (unboundo 'quote env) ; need to handle case where quote is shadowed
+     (absento :closure out)]
 
     ; list
     [(fresh [args] 
             (conso `list args expr)
+            (unboundo 'quote env)
             (eval-exp*o args env out))]
 
     ; cons
@@ -150,6 +166,7 @@
     ; abstractions - lambda definitions
     [(fresh [arg body] 
        (== expr [`λ [arg] body] )
+       (unboundo `λ env)
        (symbolo/symbolo arg)
        (== out [:closure arg body env]))]
 
@@ -173,11 +190,11 @@
   (run 1 [out] (eval-expo `((λ (x) x) 42) [] out))
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
 
-  (run 1 [out] (eval-expo `(let (y 42) y) [] out))
-  (run 1 [out] (eval-expo `(let (y 42) ((λ (x) x) y)) [] out))
+  ;(run 1 [out] (eval-expo `(let (y 42) y) [] out))
+  ;(run 1 [out] (eval-expo `(let (y 42) ((λ (x) x) y)) [] out))
 
-  (run 1 [out] (eval-expo `(if x y z) [[`x :t] [`y 1] [`z 2]] out))
-  (run 1 [out] (eval-expo `(if ~out y z) [['x :t] ['y 1] ['z 2]] 1))
+  ;(run 1 [out] (eval-expo `(if x y z) [[`x :t] [`y 1] [`z 2]] out))
+  ;(run 1 [out] (eval-expo `(if ~out y z) [['x :t] ['y 1] ['z 2]] 1))
 
   (run 1 [out] (eval-expo `(cons 4 (quote ())) [] out))
   (run 1 [out] (eval-expo `(cons 4 (quote (2 ()))) [] out))
@@ -208,6 +225,10 @@
   ; minikanren quotes the closure instead of giving us
   ; the expression that evaluates to the closure since we have quote
   (run 2 [q] (eval-expo q [] [:closure `x `x []]))
+
+  ; demonstrate that quoting doesn't handle shadowing
+  (run* [q] (eval-expo `((λ (quote) (quote quote)) (λ (y) y)) [] q))
+  ; => returns quote and the closure without unboundo
 
 )
 
