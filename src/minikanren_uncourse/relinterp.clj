@@ -66,7 +66,7 @@
       [(== x l) (== :t :f)]
       [(conso x t l) (== :t :f)] ;fail where x is in the head of the list
       ; non- empty list
-      [(conso h t l) (!= h x) (absento x t)]
+      [(conso h t l) (absento x h) (absento x t)]
       [(!= x l)]
       )))
 
@@ -75,15 +75,18 @@
   (run 1 [q] (absento 'x 'y))
   (run 1 [q] (absento 'x '()))
   (run 1 [q] (absento 'x '(x)))
+  (run 1 [q] (absento 'x '((x))))
   (run 1 [q] (absento 'x '(y)))
+  (run 1 [q] (absento 'x '((y))))
   (run 1 [q] (absento 'x '(1 2 3 4 y 5 6)))
   (run 1 [q] (absento 'x '(1 2 3 4 x 5 6)))
   (run 1 [q] (absento :closure '(1 2 3 4 :closure 5 6)))
   (run 1 [q] (absento :closure '(1 2 3 4 :not-closure 5 6)))
+  (run 1 [q] (absento :closure '(1 2 3 4 [:closure] 5 6)))
+  (run 1 [q] (absento :closure '(1 2 3 4 [:not-closure] 5 6)))
   )
 
 (defn eval-expo [expr env out]
-  ;(absento :closure expr)
   (conde
 
     ; symbols
@@ -139,10 +142,10 @@
     ; TODO: mapo that simulates map (as used in list)
     
     ; let - introduce bindings
-    [(fresh [k v body extended-env]
-            (== expr [`let [k v] body])
-            (extendo env k v extended-env)
-            (eval-expo body extended-env out))]
+    ;[(fresh [k v body extended-env]
+            ;(== expr [`let [k v] body])
+            ;(extendo env k v extended-env)
+            ;(eval-expo body extended-env out))]
 
     ; abstractions - lambda definitions
     [(fresh [arg body] 
@@ -204,7 +207,7 @@
 
   ; minikanren quotes the closure instead of giving us
   ; the expression that evaluates to the closure since we have quote
-  (run 1 [q] (eval-expo q [] [:closure `x `x []]))
+  (run 2 [q] (eval-expo q [] [:closure `x `x []]))
 
 )
 
