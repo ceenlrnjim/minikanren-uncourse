@@ -9,6 +9,12 @@
   (:use clojure.core.logic))
 
 
+;; call-by-value environment-passing lambda-calculus interpreter in miniKanren
+
+;; env : mapping from symbol (variable) to value
+;;
+;; (lookupo 'y '((x . 5) (y . (#t foo))) '(#t foo))
+
 (defn lookupo [sym env out]
   ; could use matche - start with conde and if you want to really shorten it up switch to matche
   ; matche will introduce logic values for you
@@ -26,19 +32,16 @@
   (symbolo/symbolo k)
   (conso [k v] env out))
 
-(comment 
-(run 2 [out] (lookupo `a [[`a 1] [`b 2] [`a 3]] out))
-(run 1 [out] (lookupo `b [[`a 1] [`b 2]] out))
-(run 1 [out] (lookupo `c [[`a 1] [`b 2]] out))
-(run 1 [out] (lookupo out [[`a 1] [`b 2]] 2))
-(run 1 [out] (lookupo out [[`a 1] [`b 2]] 3))
-(run 1 [out] (lookupo `a out 3))
+(defn unboundo [v env]
+  (fresh []
+    (symbolo/symbolo v)
+    (conde
+      [(== env '())]
+      [(fresh [h t r]
+              (conso [h t] r env)
+              (!= h v)
+              (unboundo v r))])))
 
-(run 1 [out] (extendo [['a 1] ['b 2] ['c 3]] 'd 4 out))
-(run 1 [out] (extendo [['a 1] ['b 2] ['c 3]] out 4 [['d 4] ['a 1] ['b 2] ['c 3]]))
-)
-
-; recursive "maping" function that applies eval to all the exprs
 (defn eval-exp*o [exprs env out]
   (conde
     [(== exprs []) (== out '())]
@@ -49,17 +52,12 @@
             (eval-expo h env hv)
             (eval-exp*o t env tv))]))
 
-(comment
-  (run 1 [h t] (conso h t '(z)))
-  (run 1 [q] (resto '(z) q))
-  (run 1 [q] (eval-exp*o '(1 z) [['y 1] ['z 5]] q))
-  (run 1 [q] (eval-exp*o '(y 2 3 4 z) [['y 1] ['z 5]] q))
-  )
-
 ; can I build a cheesy version of absento that will hopefully work well
 ; enough to keep up with the class?
 (defn absento [x l]
   (fresh [h t]
+    ; TODO: this will probably break running backwards 
+         ; and I probably don't understand the implications of using this
     (conda
       ; empty list
       [(== l [])]
@@ -85,36 +83,45 @@
   (run 1 [q] (absento :closure '(1 2 3 4 [:not-closure] 5 6)))
   )
 
-(defn unboundo [v env]
-  (fresh []
-    (symbolo/symbolo v)
-    (conde
-      [(== env '())]
-      [(fresh [h t r]
-              (conso [h t] r env)
-              (!= h v)
-              (unboundo v r))])))
-
-(comment
-  (run 1 [q] (unboundo 5 []))
-  (run 1 [q] (unboundo 'x []))
-  (run 1 [q] (unboundo 'x [['x 5]]))
-  (run 1 [q] (unboundo 'x [['y 5]]))
-  (run 1 [q] (unboundo 'x [['y 5] ['x 10]]))
-  )
-
 (defn eval-expo [expr env out]
   (conde
 
     ; symbols
-    [(symbolo/symbolo expr) (lookupo expr env out) (!= expr ':t) (!= expr ':f)]
+    [(symbolo/symbolo expr) (lookupo expr env out)]
 
+    ; quote
+    [(== expr (list 'quote out)) 
+     (unboundo 'quote env) ; need to handle case where quote is shadowed
+     ;(absento :closure out)
+     ]
+
+    ; list
+    [(fresh [args] 
+            (conso `list args expr)
+            (unboundo 'quote env)
+            (eval-exp*o args env out))]
+
+    ; abstractions - lambda definitions
+    [(fresh [arg body] 
+       (== expr [`λ [arg] body] )
+       (unboundo `λ env)
+       (symbolo/symbolo arg)
+       (== out [:closure arg body env]))]
+
+    ; function application
+    [(fresh [e1 e2 body arg value extended-env closure-env]
+            (== expr [e1 e2])
+            (eval-expo e1 env [:closure arg body closure-env])
+            (eval-expo e2 env value)
+            (extendo closure-env arg value extended-env)
+            (eval-expo body extended-env out))]))
+;
     ; numbers
-    [(symbolo/numbero expr) (== out expr)]
+    ;[(symbolo/numbero expr) (== out expr)]
 
     ; booleans
-    [(conde [(== expr ':t) (== out true)]
-            [(== expr ':f) (== out false)])]
+    ;[(conde [(== expr ':t) (== out true)]
+            ;[(== expr ':f) (== out false)])]
 
     ; conditional if
     ;[(fresh [pred te fe pred-value]
@@ -127,34 +134,23 @@
     ; empty list
     ;[(== expr '()) (== out '())]
 
-    ; quote
-    [(== expr ['quote out]) 
-     (unboundo 'quote env) ; need to handle case where quote is shadowed
-     (absento :closure out)]
-
-    ; list
-    [(fresh [args] 
-            (conso `list args expr)
-            (unboundo 'quote env)
-            (eval-exp*o args env out))]
-
     ; cons
-    [(fresh [he te hv tv]
-            ; TODO: check that t is a list?
-            (== expr [`cons he te])
-            (eval-expo he env hv)
-            (eval-expo te env tv)
-            (== out (list hv tv)))]
+    ;[(fresh [he te hv tv]
+            ;; TODO: check that t is a list?
+            ;(== expr [`cons he te])
+            ;(== out (list hv tv)) 
+            ;(eval-expo he env hv)
+            ;(eval-expo te env tv))]
      
     ; car
-    [(fresh [le t]
-            (== expr [`car le])
-            (eval-expo le env [out t]))]
+    ;[(fresh [le t]
+            ;(== expr [`car le])
+            ;(eval-expo le env [out t]))]
      
     ; cdr
-    [(fresh [h le]
-            (== expr [`cdr le])
-            (eval-expo le env [h out]))]
+    ;[(fresh [h le]
+            ;(== expr [`cdr le])
+            ;(eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
     ; TODO: tagged numbers and arithmatic
@@ -166,21 +162,7 @@
             ;(extendo env k v extended-env)
             ;(eval-expo body extended-env out))]
 
-    ; abstractions - lambda definitions
-    [(fresh [arg body] 
-       (== expr [`λ [arg] body] )
-       (unboundo `λ env)
-       (symbolo/symbolo arg)
-       (== out [:closure arg body env]))]
 
-    ; function application
-    [(fresh [e1 e2 body arg value extended-env closure-env]
-            (== expr [e1 e2])
-            ; TODO: this will collide with (quote x)
-            (eval-expo e1 env [:closure arg body closure-env])
-            (eval-expo e2 env value)
-            (extendo closure-env arg value extended-env)
-            (eval-expo body extended-env out))]))
 
 (comment
   (run 1 [out] (eval-expo `a [[`a 1]] out))
@@ -189,35 +171,17 @@
   (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
 
-  (run 1 [out] (eval-expo 234 [] out))
-  (run 1 [out] (eval-expo `((λ (x) x) 42) [] out))
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
-
-  ;(run 1 [out] (eval-expo `(let (y 42) y) [] out))
-  ;(run 1 [out] (eval-expo `(let (y 42) ((λ (x) x) y)) [] out))
-
-  ;(run 1 [out] (eval-expo `(if x y z) [[`x :t] [`y 1] [`z 2]] out))
-  ;(run 1 [out] (eval-expo `(if ~out y z) [['x :t] ['y 1] ['z 2]] 1))
-
-  (run 1 [out] (eval-expo `(cons 4 (quote ())) [] out))
-  (run 1 [out] (eval-expo `(cons 4 (quote (2 ()))) [] out))
-  (run 1 [out] (eval-expo `(car (quote (4 (2 ())))) [] out))
-  (run 1 [out] (eval-expo `(cdr (quote (4 (2 ())))) [] out))
-  (run 1 [out] (eval-expo `(car (quote (42 ()))) [] out))
-  (run 1 [out] (eval-expo `(car (quote (x ()))) [[`x 5]] out))
-  (run 1 [out] (eval-expo `(cons ((λ (x) x) y) (quote ())) [[`y 42]] out))
-
-  (run 1 [out] (eval-expo `(car (cons ((λ (x) x) y) (quote ()))) [[`y 42]] out))
 
   (run 1 [out] (eval-expo `() [] out))
 
   (run 1 [out] (eval-expo '(quote (car (cons ((λ (x) x) y) (quote ())))) [['y 42]] out))
 
   ; TODO: need to decide on quote type = I think syntax quote will be required if I want to run backwards
-  (run 1 [out] (eval-expo `(car ~out) [] 4))
 
   ; list
-  (run 2 [out] (eval-expo `(list a b c d e 6 7 8) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
+  (run 1 [out] (eval-expo `(list '() '() '()) [] out))
+  (run 2 [out] (eval-expo `(list a b c d e) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
   (run 2 [out] (eval-expo out `() `(5 6 [:closure z y [[`y 7]]])))
 
   ; both the following return the same closure
@@ -233,6 +197,15 @@
   (run* [q] (eval-expo `((λ (quote) (quote quote)) (λ (y) y)) [] q))
   ; => returns quote and the closure without unboundo
 
+  (run 2 [q] (eval-expo q [] `(I love you)))
+
+  ; quite (eval expr) => expr
+  (run 1 [q] (eval-expo q [] q))
+
+  (run 1 [p q] 
+       (!= p q)
+       (eval-expo q [] p)
+       (eval-expo p [] q))
 )
 
 
