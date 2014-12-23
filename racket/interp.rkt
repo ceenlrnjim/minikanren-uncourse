@@ -63,4 +63,7 @@
          (eval-expo a env res-a)
          (eval-exp*o d env res-d))])))
 
-(run 99 (expr) (eval-expo expr '() '(I love you)))
+;(run 99 (expr) (eval-expo expr '() '(I love you)))
+
+;; Quines
+(run 1 (q) (eval-expo q '() q))
