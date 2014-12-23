@@ -28,9 +28,11 @@
       [(== k sym) (== v out)]
       [(!= k sym) (lookupo sym r out)])))
 
-(defn extendo [env k v out]
-  (symbolo/symbolo k)
-  (conso [k v] env out))
+(comment
+  (run 1 [q] (lookupo 'x [['x 1] ['x 2]] q))
+  (run 1 [q] (lookupo 'y [['x 1] ['x 2]] q))
+  (run 1 [q] (lookupo q [['x 1] ['y 2]] 2))
+  )
 
 (defn unboundo [v env]
   (fresh []
@@ -92,30 +94,31 @@
     [(symbolo/symbolo expr) (lookupo expr env out)]
 
     ; quote
-    [(== expr (list 'quote out)) 
-     (unboundo 'quote env) ; need to handle case where quote is shadowed
+    [(== expr `(quote ~out)) 
+     (unboundo `quote env) ; need to handle case where quote is shadowed
      ;(absento :closure out)
      ]
 
     ; list
     [(fresh [args] 
             (conso `list args expr)
-            (unboundo 'quote env)
+            (unboundo `list env)
             (eval-exp*o args env out))]
 
     ; abstractions - lambda definitions
     [(fresh [arg body] 
-       (== expr [`λ [arg] body] )
-       (unboundo `λ env)
+       (== expr `(λ (~arg) ~body))
+       (== out [:closure arg body env])
        (symbolo/symbolo arg)
-       (== out [:closure arg body env]))]
+       (unboundo `λ env)
+       )]
 
     ; function application
     [(fresh [e1 e2 body arg value extended-env closure-env]
-            (== expr [e1 e2])
+            (== expr `(~e1 ~e2))
             (eval-expo e1 env [:closure arg body closure-env])
             (eval-expo e2 env value)
-            (extendo closure-env arg value extended-env)
+            (conso [arg value] closure-env extended-env)
             (eval-expo body extended-env out))]))
 ;
     ; numbers
@@ -172,10 +175,12 @@
   (run 1 [out] (eval-expo `(λ (x) x) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
+  (run 1 [out] (eval-expo `((λ (λ) λ) x) [[`x 1]] out))
 
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
 
   (run 1 [out] (eval-expo `() [] out))
+  (run 1 [out] (eval-expo `(quote foobar) [] out))
 
   (run 1 [out] (eval-expo '(quote (car (cons ((λ (x) x) y) (quote ())))) [['y 42]] out))
 
@@ -185,6 +190,7 @@
   (run 1 [out] (eval-expo `(list '() '() '()) [] out))
   (run 2 [out] (eval-expo `(list a b c d e) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
   (run 2 [out] (eval-expo out `() `(5 6 [:closure z y [[`y 7]]])))
+  (run 1 [out] (eval-expo `((λ (list) list) x) [[`x 1] [`y 2] [`z 3]] out))
 
   ; both the following return the same closure
   (run* [q] (eval-expo `(λ (x) x) [] q))
