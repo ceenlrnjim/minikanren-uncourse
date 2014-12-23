@@ -42,6 +42,8 @@
               (!= h v)
               (unboundo v r))])))
 
+(declare eval-expo)
+
 (defn eval-exp*o [exprs env out]
   (conde
     [(== exprs []) (== out '())]
