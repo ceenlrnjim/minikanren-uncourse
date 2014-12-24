@@ -66,7 +66,7 @@
       [(== x l) (== :t :f)]
       [(conso x t l) (== :t :f)] ;fail where x is in the head of the list
       ; non- empty list
-      [(conso h t l) (absento x t)] ; TODO: do I want (absento x h) as well?
+      [(conso h t l) (absento x h) (absento x t)] ; TODO: do I want (absento x h) as well?
       [(!= x l)])))
 
 (comment
@@ -94,7 +94,7 @@
     ; quote
     [(== expr (list 'quote out)) 
      (unboundo 'quote env) ; need to handle case where quote is shadowed
-     ;(absento :closure out)
+     (absento :closure out)
      ]
 
     ; list
@@ -173,6 +173,7 @@
   (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
 
+  ; TODO: is absento messing this up
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
 
   (run 1 [out] (eval-expo `() [] out))
@@ -202,6 +203,7 @@
   (run 2 [q] (eval-expo q [] `(I love you)))
 
   ; quite (eval expr) => expr
+  ; TODO: re-run this with absento that checks head and tail
   (run 1 [q] (eval-expo q [] q))
 
   (run 1 [p q] 
