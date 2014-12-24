@@ -49,6 +49,19 @@
            (== `(list . ,expr*) expr)
            (eval-exp*o expr* env out)
            (unboundo 'list env))]
+        [(fresh (xs le lv)
+           (== `(car ,le) expr)
+           (== `(,out . ,xs) lv)
+           (eval-expo le env lv))]
+        [(fresh (le lv x)
+           (== `(cdr ,le) expr)
+           (== `(,x . ,out) lv)
+           (eval-expo le env lv))]
+        [(fresh (h t hv tv)
+           (== `(cons ,h ,t) expr)
+           (== out (cons hv tv))
+           (eval-expo h env hv)
+           (eval-expo t env tv))]
         [(fresh (x body) ;; abstraction
            (== `(lambda (,x) ,body) expr)
            (== `(closure ,x ,body ,env) out)
@@ -59,6 +72,10 @@
            (eval-expo e1 env `(closure ,x ,body ,envˆ))
            (eval-expo e2 env val)
            (eval-expo body `((,x . ,val) . ,envˆ) out))]))))
+
+;; (run 1 (q) (eval-expo '(car (list x y)) '((x . 1) (y . 2)) q))
+;; (run 1 (q) (eval-expo '(car (cdr (list x y z))) '((x . 1) (y . 2) (z . 42)) q))
+;; (run 1 (q) (eval-expo '(cons (lambda (x) x) (quote (y))) '((y . 42)) q))
 
 (define eval-exp*o
   (lambda (expr* env out)
