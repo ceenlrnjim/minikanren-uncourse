@@ -1,6 +1,13 @@
 #lang racket
 
-(require "mk.rkt")
+(require cKanren/miniKanren)
+(require cKanren/absento)
+(require cKanren/attributes)
+(require cKanren/neq)
+
+;; shimming numbero/absento with cKanren versions
+(define symbolo symbol)
+(define numbero number)
 
 ;; call-by-value environment-passing lambda-calculus interpreter in miniKanren
 
@@ -63,7 +70,7 @@
          (eval-expo a env res-a)
          (eval-exp*o d env res-d))])))
 
-;(run 99 (expr) (eval-expo expr '() '(I love you)))
+(run 2 (expr) (eval-expo expr '() '(I love you)))
 
 ;; Quines
-(run 1 (q) (eval-expo q '() q))
+;(run 1 (q) (eval-expo q '() q))
