@@ -43,7 +43,7 @@
         [(symbolo expr) ;; variable
          (lookupo expr env out)]
         [(== `(quote ,out) expr)
-         ;;(absento 'closure out) ;; absento missing from racket minikanren?
+         (absento 'closure out)
          (unboundo 'quote env)]
         [(fresh (expr*)
            (== `(list . ,expr*) expr)
@@ -70,7 +70,7 @@
          (eval-expo a env res-a)
          (eval-exp*o d env res-d))])))
 
-(run 2 (expr) (eval-expo expr '() '(I love you)))
+;(run 2 (expr) (eval-expo expr '() '(I love you)))
 
 ;; Quines
-;(run 1 (q) (eval-expo q '() q))
+(run 1 (q) (eval-expo q '() q))
