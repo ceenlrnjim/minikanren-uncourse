@@ -269,7 +269,7 @@
   (run 1 [q] (eval-expo `(car (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
   (run 1 [q] (eval-expo `(cdr (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
 
-  (run 1 [q]
+  (run*  [q]
     (eval-expo
      `((((λ (f)
         ((λ (x) (f (x x))) 
@@ -282,6 +282,35 @@
                 s
                 (cons (car l) ((myappend3 (cdr l)) s)))))))
      (quote (a b c))) (quote (d e))) [] q)) 
+
+  (run*  [q]
+    (eval-expo
+     `((((λ (f)
+        ((λ (x) (f (x x))) 
+         (λ (x) (λ (y) ((f (x x)) y)))))
+
+       (λ [myappend3]
+          (λ (l)
+            (λ (s)
+              (if (null? l) 
+                s
+                (cons (car l) ((myappend3 (cdr l)) s)))))))
+     (quote (a b c))) (quote ~q)) [] `(a b c d e))) 
+
+  (run* [x y]
+    (eval-expo
+     `((((λ (f)
+        ((λ (x) (f (x x))) 
+         (λ (x) (λ (y) ((f (x x)) y)))))
+
+       (λ [myappend3]
+          (λ (l)
+            (λ (s)
+              (if (null? l) 
+                s
+                (cons (car l) ((myappend3 (cdr l)) s)))))))
+     (quote ~x)) (quote ~y)) [] `(a b c d e))) 
+
 )
 
 
