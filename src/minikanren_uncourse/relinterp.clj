@@ -94,7 +94,7 @@
     ; quote
     [(== expr (list 'quote out)) 
      (unboundo 'quote env) ; need to handle case where quote is shadowed
-     (absento :closure out)
+     ;(absento :closure out)
      ]
 
     ; list
@@ -102,6 +102,45 @@
             (conso `list args expr)
             (unboundo 'quote env)
             (eval-exp*o args env out))]
+
+    ; cons
+    [(fresh [he te hv tv]
+            ; TODO: check that t is a list?
+            (== expr `(cons ~he ~te))
+            (conso hv tv out)
+            (unboundo `cons env)
+            (eval-expo he env hv)
+            (eval-expo te env tv))]
+
+    ; car
+    [(fresh [le t]
+            (== expr `(car ~le))
+            (unboundo `car env)
+            (eval-expo le env [out t]))]
+  
+    ; cdr
+    [(fresh [h le]
+            (== expr `(cdr ~le))
+            (unboundo `cdr env)
+            (eval-expo le env [h out]))]
+
+    ; null?
+    [(fresh (e v)
+            (== expr `(null? ~e)) 
+            (unboundo `null? env)
+            (conde
+              [(== '() v) (== true out)]
+              [(!= '() v) (== false out)])
+            (eval-expo e env v))]
+    
+    ; conditional if
+    [(fresh [pred te fe pred-value]
+            (== expr `(if ~pred ~te ~fe))
+            (unboundo `if env)
+            (eval-expo pred env pred-value)
+            (conde
+              [(== pred-value false) (eval-expo fe env out)]
+              [(!= pred-value false) (eval-expo te env out)]))]
 
     ; abstractions - lambda definitions
     [(fresh [arg body] 
@@ -117,7 +156,7 @@
             (eval-expo e2 env value)
             (extendo closure-env arg value extended-env)
             (eval-expo body extended-env out))]))
-;
+
     ; numbers
     ;[(symbolo/numbero expr) (== out expr)]
 
@@ -125,34 +164,10 @@
     ;[(conde [(== expr ':t) (== out true)]
             ;[(== expr ':f) (== out false)])]
 
-    ; conditional if
-    ;[(fresh [pred te fe pred-value]
-            ;(== expr [`if pred te fe])
-            ;(eval-expo pred env pred-value)
-            ;(conde
-              ;[(== pred-value ':t) (eval-expo te env out)]
-              ;[(== pred-value ':f) (eval-expo fe env out)]))]
-
     ; empty list
     ;[(== expr '()) (== out '())]
 
-    ; cons
-    ;[(fresh [he te hv tv]
-            ;; TODO: check that t is a list?
-            ;(== expr [`cons he te])
-            ;(== out (list hv tv)) 
-            ;(eval-expo he env hv)
-            ;(eval-expo te env tv))]
      
-    ; car
-    ;[(fresh [le t]
-            ;(== expr [`car le])
-            ;(eval-expo le env [out t]))]
-     
-    ; cdr
-    ;[(fresh [h le]
-            ;(== expr [`cdr le])
-            ;(eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
     ; TODO: tagged numbers and arithmatic
@@ -164,6 +179,37 @@
             ;(extendo env k v extended-env)
             ;(eval-expo body extended-env out))]
 
+; as previously defined - converted from scheme implementation
+(defn myappend [l s]
+  (cond
+    (empty? l) s
+    :else (cons (first l) (myappend (rest l) s))))
+
+(defn myappendo [l s out]
+  (conde
+    [(== '() l) (== s out)]
+    [(fresh (h t res)
+      (conso h t l)
+      (conso h res out)
+      (myappendo t s res))]))
+
+
+; replacing with a new definition to make implementation in our interpreter simpler
+(defn myappend2 [l]
+  ; need to curry since our interpreter only takes one argument
+  (fn [s]
+    (if (empty? l) 
+      s
+      (cons (first l) ((myappend2 (rest l)) s)))))
+
+(comment
+  ((myappend2 [1 2 3]) [4 5 6])
+  )
+
+
+(defn Y [f]
+  ((fn [x] (f (x x))) 
+   (fn [x] (f (x x)))))
 
 
 (comment
@@ -210,6 +256,14 @@
        (!= p q)
        (eval-expo q [] p)
        (eval-expo p [] q))
+
+  (run 1 [q] (eval-expo `(cons (quote a) (quote b)) [] q))
+  (run 1 [q] (eval-expo `(car (quote (a (b c)))) [] q))
+  (run 1 [q] (eval-expo `(cdr (quote (a (b c)))) [] q))
+  (run 1 [q] (eval-expo `(null? (quote ())) [] q))
+  (run 1 [q] (eval-expo `(null? (cdr (quote (4 ())))) [] q))
+  (run 1 [q] (eval-expo `(if (null? (quote ())) (quote t) (quote f)) [] q))
+  (run 1 [q] (eval-expo `(if (null? (quote (2))) (quote t) (quote f)) [] q))
 )
 
 
