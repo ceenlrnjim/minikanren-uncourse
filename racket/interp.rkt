@@ -135,14 +135,14 @@
  '(d e))
 
 
-(define appendo
+(define myappendo
   (lambda (l s out)
     (conde
       [(== '() l) (== s out)]
       [(fresh (a d res)
               (== `(,a . ,d) l)
               (== out `(,a . ,res))
-              (appendo d s res))]
+              (myappendo d s res))]
       )
     )
   )
