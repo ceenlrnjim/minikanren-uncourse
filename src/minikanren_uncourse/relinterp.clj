@@ -92,8 +92,8 @@
     [(symbolo/symbolo expr) (lookupo expr env out)]
 
     ; quote
-    [(== expr (list 'quote out)) 
-     (unboundo 'quote env) ; need to handle case where quote is shadowed
+    [(== expr `(quote ~out)) 
+     (unboundo `quote env) ; need to handle case where quote is shadowed
      ;(absento :closure out)
      ]
 
@@ -113,16 +113,18 @@
             (eval-expo te env tv))]
 
     ; car
-    [(fresh [le t]
+    [(fresh [le t lv]
             (== expr `(car ~le))
             (unboundo `car env)
-            (eval-expo le env [out t]))]
+            (conso out t lv)
+            (eval-expo le env lv))]
   
     ; cdr
-    [(fresh [h le]
+    [(fresh [h le lv]
             (== expr `(cdr ~le))
             (unboundo `cdr env)
-            (eval-expo le env [h out]))]
+            (conso h out lv)
+            (eval-expo le env lv))]
 
     ; null?
     [(fresh (e v)
@@ -224,9 +226,7 @@
 
   (run 1 [out] (eval-expo `() [] out))
 
-  (run 1 [out] (eval-expo '(quote (car (cons ((λ (x) x) y) (quote ())))) [['y 42]] out))
-
-  ; TODO: need to decide on quote type = I think syntax quote will be required if I want to run backwards
+  (run 1 [out] (eval-expo `(quote (car (cons ((λ (x) x) y) (quote ())))) [[`y 42]] out))
 
   ; list
   (run 1 [out] (eval-expo `(list '() '() '()) [] out))
@@ -264,6 +264,24 @@
   (run 1 [q] (eval-expo `(null? (cdr (quote (4 ())))) [] q))
   (run 1 [q] (eval-expo `(if (null? (quote ())) (quote t) (quote f)) [] q))
   (run 1 [q] (eval-expo `(if (null? (quote (2))) (quote t) (quote f)) [] q))
+
+  (run 1 [q] (eval-expo `(cons (quote a) (cons (quote b) (cons (quote c) (quote ())))) [] q))
+  (run 1 [q] (eval-expo `(car (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
+  (run 1 [q] (eval-expo `(cdr (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
+
+  (run 1 [q]
+    (eval-expo
+     `((((λ (f)
+        ((λ (x) (f (x x))) 
+         (λ (x) (λ (y) ((f (x x)) y)))))
+
+       (λ [myappend3]
+          (λ (l)
+            (λ (s)
+              (if (null? l) 
+                s
+                (cons (car l) ((myappend3 (cdr l)) s)))))))
+     (quote (a b c))) (quote (d e))) [] q)) 
 )
 
 

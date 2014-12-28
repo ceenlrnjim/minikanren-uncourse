@@ -206,7 +206,7 @@
   (eval-exp '(null? (cdr (quote (4 2)))) [])
   (eval-exp '(null? (cdr (quote (4)))) [])
 
-  (eval-exp '((λ [x] (car x)) (quote (2 3 4))) []))
+  (eval-exp '((λ [x] (car x)) (quote (2 3 4))) [])
 
   ; Inline Y and apply to definiton of myappend to have our evaluator execute it
   (eval-exp
@@ -220,7 +220,7 @@
             (if (null? l) 
               s
               (cons (car l) ((myappend3 (cdr l)) s)))))))
-   '(a b c)) '(d e)) [])
+   (quote (a b c))) (quote (d e))) []))
  
   
 ; scheme list implementation
