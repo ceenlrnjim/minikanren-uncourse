@@ -90,4 +90,59 @@
 ;(run 2 (expr) (eval-expo expr '() '(I love you)))
 
 ;; Quines
-(run 1 (q) (eval-expo q '() q))
+;(run 1 (q) (eval-expo q '() q))
+
+;; hangout #6
+(define Y
+  (lambda (f)
+     ((lambda (x)
+        (f (x x)))
+      (lambda (x) 
+        (lambda (y)
+        ((f (x x)) y))))))
+
+(define my-append
+  (lambda [l]
+    (lambda [s]
+    (if (null? l) 
+      s
+      (cons (car l) ((my-append (cdr l)) s))
+      ))))
+
+(((Y (lambda [my-append]
+       (lambda [l]
+        (lambda [s]
+        (if (null? l) 
+          s
+          (cons (car l) ((my-append (cdr l)) s)))))))
+ '(a b c))
+ '(d e))
+
+((((lambda (f)
+     ((lambda (x)
+        (f (x x)))
+      (lambda (x) 
+        (lambda (y)
+        ((f (x x)) y))))) 
+    
+    (lambda [my-append]
+       (lambda [l]
+        (lambda [s]
+        (if (null? l) 
+          s
+          (cons (car l) ((my-append (cdr l)) s)))))))
+ '(a b c))
+ '(d e))
+
+
+(define appendo
+  (lambda (l s out)
+    (conde
+      [(== '() l) (== s out)]
+      [(fresh (a d res)
+              (== `(,a . ,d) l)
+              (== out `(,a . ,res))
+              (appendo d s res))]
+      )
+    )
+  )
