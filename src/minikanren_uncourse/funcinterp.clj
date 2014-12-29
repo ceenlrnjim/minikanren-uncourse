@@ -18,19 +18,9 @@
 
 
 
-; example of sequence matching
 ; Note that list matching is not supported by core.match, using seq
 ;  which would technically match vectors etc. as well
-(comment 
-(match [(list 1 2 3 4 5)]
-       [([_ _ 3 4 a] :seq)] [a])
-
-; example of matching against function definition
-(match ['(fn [x] (+ x 2))]
-       [(['fn [arg] body] :seq)] [arg body])
-
-)
-
+;
 (defn lookup [sym env]
   (match [env]
          ; match the empty sequence - break recursion
@@ -42,6 +32,8 @@
 
 (defn extend-env [env k v]
   (cons [k v] env))
+
+(declare eval-exp)
 
 (defn eval-exp* [expr* env]
   (cond
@@ -67,10 +59,12 @@
 
     ; if conditional
     [(['if pred t f] :seq)]
-      (if (= :t (eval-exp pred env)) 
+      (if (eval-exp pred env) 
         (eval-exp t env)
         (eval-exp f env))
 
+    ; null?
+    [(['null? e] :seq)] (empty? (eval-exp e env))
 
     ; empty list
     [([] :seq)] '()
@@ -83,17 +77,16 @@
          (eval-exp* exprs env)
 
     ; cons
-    [(['cons h (t :guard list?)] :seq)] (list (eval-exp h env) (eval-exp t env))
+    [(['cons h t] :seq)] 
+       (cons (eval-exp h env) (eval-exp t env))
          
     ; car
-    [(['car (l :guard list?)] :seq)] (first (eval-exp l env))
+    [(['car l] :seq)] (first (eval-exp l env))
 
     ; cdr
-    [(['cdr (l :guard list?)] :seq)] (second (eval-exp l env))
+    [(['cdr l] :seq)] (rest (eval-exp l env))
 
     ; TODO: bool? zero?
-    ; TODO: cons car cdr
-    ; TODO: quote list
     ; TODO: tagged numbers and arithmatic
     
           
@@ -125,6 +118,49 @@
     [_] (throw (IllegalArgumentException. (str "Invalid expression: " expr)))))
 
 
+; Y combinator for eagerly evaluated, call by value, language
+; "inverse eta"
+;  Idea of eta: (lambda (x) (add1 x)) is the same as add1 (eta contraction)
+;  so inverse eta: add1 => (lambda (x) (add1 x))  (eta expansion)
+;
+;  Mathematical definition of Y is:
+;  Y x = x (Y x) fixed point combinator
+(defn Y [f]
+  ((fn [x] (f (x x))) 
+   (fn [x] (fn [y] ((f (x x)) y)))))
+
+
+; replacing with a new definition to make implementation in our interpreter simpler
+(defn myappend2 [l]
+  ; need to curry since our interpreter only takes one argument
+  (fn [s]
+    (if (empty? l) 
+      s
+      (cons (first l) ((myappend2 (rest l)) s)))))
+
+; now a definition of append that doesn't require "define"
+(((Y (fn [myappend3]
+      (fn [l]
+        (fn [s]
+          (if (empty? l) 
+            s
+            (cons (first l) ((myappend3 (rest l)) s)))))))
+ '(a b c)) '(d e))
+
+; inline Y
+((((fn [f]
+    ((fn [x] (f (x x))) 
+     (fn [x] (fn [y] ((f (x x)) y)))))
+
+   (fn [myappend3]
+      (fn [l]
+        (fn [s]
+          (if (empty? l) 
+            s
+            (cons (first l) ((myappend3 (rest l)) s)))))))
+ '(a b c)) '(d e))
+
+
 ; examples of variable lookup
 (comment
   
@@ -153,20 +189,40 @@
   (eval-exp '(let [foo (λ [x] x)] (foo 100)) [])
 
   ; if and booleans
-  (eval-exp '(if y 1 0) [['y :t]])
-  (eval-exp '(if y 1 0) [['y :f]])
+  (eval-exp '(if y 1 0) [['y true]])
+  (eval-exp '(if y 1 0) [['y false]])
 
   (eval-exp '(quote (1 2 3 4)) [])
   (eval-exp '(quote (λ (x) (λ (y) (cons x (cons y (quote ())))))) [])
   (eval-exp '(cons 4 (quote (2 ()))) [])
-  (eval-exp '(car (quote (4 (2 ()))) ) [])
-  (eval-exp '(cdr (quote (4 (2 ()))) ) [])
+  (eval-exp '(car (quote (4 2))) [])
+  (eval-exp '(cdr (quote (4 2))) [])
 
   ; list
   (eval-exp '(list 1 2 3 4 5 (car (quote (2 (quote ()))))) [])
 
-)
+  (eval-exp '(null? '()) [])
+  (eval-exp '(null? (quote  (4))) [])
+  (eval-exp '(null? (cdr (quote (4 2)))) [])
+  (eval-exp '(null? (cdr (quote (4)))) [])
 
+  (eval-exp '((λ [x] (car x)) (quote (2 3 4))) [])
+
+  ; Inline Y and apply to definiton of myappend to have our evaluator execute it
+  (eval-exp
+   '((((λ [f]
+      ((λ [x] (f (x x))) 
+       (λ [x] (λ [y] ((f (x x)) y)))))
+
+     (λ [myappend3]
+        (λ [l]
+          (λ [s]
+            (if (null? l) 
+              s
+              (cons (car l) ((myappend3 (cdr l)) s)))))))
+   (quote (a b c))) (quote (d e))) []))
+ 
+  
 ; scheme list implementation
 ; ((lambda args args) 1 2 3 4 5)
 ; => (1 2 3 4 5)

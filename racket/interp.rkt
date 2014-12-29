@@ -1,6 +1,13 @@
 #lang racket
 
-(require "mk.rkt")
+(require cKanren/miniKanren)
+(require cKanren/absento)
+(require cKanren/attributes)
+(require cKanren/neq)
+
+;; shimming numbero/absento with cKanren versions
+(define symbolo symbol)
+(define numbero number)
 
 ;; call-by-value environment-passing lambda-calculus interpreter in miniKanren
 
@@ -36,12 +43,25 @@
         [(symbolo expr) ;; variable
          (lookupo expr env out)]
         [(== `(quote ,out) expr)
-         ;;(absento 'closure out) ;; absento missing from racket minikanren?
+         (absento 'closure out)
          (unboundo 'quote env)]
         [(fresh (expr*)
            (== `(list . ,expr*) expr)
            (eval-exp*o expr* env out)
            (unboundo 'list env))]
+        [(fresh (xs le lv)
+           (== `(car ,le) expr)
+           (== `(,out . ,xs) lv)
+           (eval-expo le env lv))]
+        [(fresh (le lv x)
+           (== `(cdr ,le) expr)
+           (== `(,x . ,out) lv)
+           (eval-expo le env lv))]
+        [(fresh (h t hv tv)
+           (== `(cons ,h ,t) expr)
+           (== out (cons hv tv))
+           (eval-expo h env hv)
+           (eval-expo t env tv))]
         [(fresh (x body) ;; abstraction
            (== `(lambda (,x) ,body) expr)
            (== `(closure ,x ,body ,env) out)
@@ -53,6 +73,10 @@
            (eval-expo e2 env val)
            (eval-expo body `((,x . ,val) . ,envˆ) out))]))))
 
+;; (run 1 (q) (eval-expo '(car (list x y)) '((x . 1) (y . 2)) q))
+;; (run 1 (q) (eval-expo '(car (cdr (list x y z))) '((x . 1) (y . 2) (z . 42)) q))
+;; (run 1 (q) (eval-expo '(cons (lambda (x) x) (quote (y))) '((y . 42)) q))
+
 (define eval-exp*o
   (lambda (expr* env out)
     (conde
@@ -63,7 +87,62 @@
          (eval-expo a env res-a)
          (eval-exp*o d env res-d))])))
 
-;(run 99 (expr) (eval-expo expr '() '(I love you)))
+;(run 2 (expr) (eval-expo expr '() '(I love you)))
 
 ;; Quines
-(run 1 (q) (eval-expo q '() q))
+;(run 1 (q) (eval-expo q '() q))
+
+;; hangout #6
+(define Y
+  (lambda (f)
+     ((lambda (x)
+        (f (x x)))
+      (lambda (x) 
+        (lambda (y)
+        ((f (x x)) y))))))
+
+(define my-append
+  (lambda [l]
+    (lambda [s]
+    (if (null? l) 
+      s
+      (cons (car l) ((my-append (cdr l)) s))
+      ))))
+
+(((Y (lambda [my-append]
+       (lambda [l]
+        (lambda [s]
+        (if (null? l) 
+          s
+          (cons (car l) ((my-append (cdr l)) s)))))))
+ '(a b c))
+ '(d e))
+
+((((lambda (f)
+     ((lambda (x)
+        (f (x x)))
+      (lambda (x) 
+        (lambda (y)
+        ((f (x x)) y))))) 
+    
+    (lambda [my-append]
+       (lambda [l]
+        (lambda [s]
+        (if (null? l) 
+          s
+          (cons (car l) ((my-append (cdr l)) s)))))))
+ '(a b c))
+ '(d e))
+
+
+(define appendo
+  (lambda (l s out)
+    (conde
+      [(== '() l) (== s out)]
+      [(fresh (a d res)
+              (== `(,a . ,d) l)
+              (== out `(,a . ,res))
+              (appendo d s res))]
+      )
+    )
+  )

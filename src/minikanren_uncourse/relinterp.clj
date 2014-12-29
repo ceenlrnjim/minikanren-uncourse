@@ -68,7 +68,7 @@
       [(== x l) (== :t :f)]
       [(conso x t l) (== :t :f)] ;fail where x is in the head of the list
       ; non- empty list
-      [(conso h t l) (absento x t)] ; TODO: do I want (absento x h) as well?
+      [(conso h t l) (absento x h) (absento x t)] ; TODO: do I want (absento x h) as well?
       [(!= x l)])))
 
 (comment
@@ -105,6 +105,47 @@
             (unboundo `list env)
             (eval-exp*o args env out))]
 
+    ; cons
+    [(fresh [he te hv tv]
+            ; TODO: check that t is a list?
+            (== expr `(cons ~he ~te))
+            (conso hv tv out)
+            (unboundo `cons env)
+            (eval-expo he env hv)
+            (eval-expo te env tv))]
+
+    ; car
+    [(fresh [le t lv]
+            (== expr `(car ~le))
+            (unboundo `car env)
+            (conso out t lv)
+            (eval-expo le env lv))]
+  
+    ; cdr
+    [(fresh [h le lv]
+            (== expr `(cdr ~le))
+            (unboundo `cdr env)
+            (conso h out lv)
+            (eval-expo le env lv))]
+
+    ; null?
+    [(fresh (e v)
+            (== expr `(null? ~e)) 
+            (unboundo `null? env)
+            (conde
+              [(== '() v) (== true out)]
+              [(!= '() v) (== false out)])
+            (eval-expo e env v))]
+    
+    ; conditional if
+    [(fresh [pred te fe pred-value]
+            (== expr `(if ~pred ~te ~fe))
+            (unboundo `if env)
+            (eval-expo pred env pred-value)
+            (conde
+              [(== pred-value false) (eval-expo fe env out)]
+              [(!= pred-value false) (eval-expo te env out)]))]
+
     ; abstractions - lambda definitions
     [(fresh [arg body] 
        (== expr `(λ (~arg) ~body))
@@ -120,7 +161,7 @@
             (eval-expo e2 env value)
             (conso [arg value] closure-env extended-env)
             (eval-expo body extended-env out))]))
-;
+
     ; numbers
     ;[(symbolo/numbero expr) (== out expr)]
 
@@ -128,34 +169,10 @@
     ;[(conde [(== expr ':t) (== out true)]
             ;[(== expr ':f) (== out false)])]
 
-    ; conditional if
-    ;[(fresh [pred te fe pred-value]
-            ;(== expr [`if pred te fe])
-            ;(eval-expo pred env pred-value)
-            ;(conde
-              ;[(== pred-value ':t) (eval-expo te env out)]
-              ;[(== pred-value ':f) (eval-expo fe env out)]))]
-
     ; empty list
     ;[(== expr '()) (== out '())]
 
-    ; cons
-    ;[(fresh [he te hv tv]
-            ;; TODO: check that t is a list?
-            ;(== expr [`cons he te])
-            ;(== out (list hv tv)) 
-            ;(eval-expo he env hv)
-            ;(eval-expo te env tv))]
      
-    ; car
-    ;[(fresh [le t]
-            ;(== expr [`car le])
-            ;(eval-expo le env [out t]))]
-     
-    ; cdr
-    ;[(fresh [h le]
-            ;(== expr [`cdr le])
-            ;(eval-expo le env [h out]))]
     
     ; TODO: bool? zero?
     ; TODO: tagged numbers and arithmatic
@@ -167,6 +184,37 @@
             ;(extendo env k v extended-env)
             ;(eval-expo body extended-env out))]
 
+; as previously defined - converted from scheme implementation
+(defn myappend [l s]
+  (cond
+    (empty? l) s
+    :else (cons (first l) (myappend (rest l) s))))
+
+(defn myappendo [l s out]
+  (conde
+    [(== '() l) (== s out)]
+    [(fresh (h t res)
+      (conso h t l)
+      (conso h res out)
+      (myappendo t s res))]))
+
+
+; replacing with a new definition to make implementation in our interpreter simpler
+(defn myappend2 [l]
+  ; need to curry since our interpreter only takes one argument
+  (fn [s]
+    (if (empty? l) 
+      s
+      (cons (first l) ((myappend2 (rest l)) s)))))
+
+(comment
+  ((myappend2 [1 2 3]) [4 5 6])
+  )
+
+
+(defn Y [f]
+  ((fn [x] (f (x x))) 
+   (fn [x] (f (x x)))))
 
 
 (comment
@@ -177,14 +225,13 @@
   (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
   (run 1 [out] (eval-expo `((λ (λ) λ) x) [[`x 1]] out))
 
+  ; TODO: is absento messing this up
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
 
   (run 1 [out] (eval-expo `() [] out))
   (run 1 [out] (eval-expo `(quote foobar) [] out))
 
-  (run 1 [out] (eval-expo '(quote (car (cons ((λ (x) x) y) (quote ())))) [['y 42]] out))
-
-  ; TODO: need to decide on quote type = I think syntax quote will be required if I want to run backwards
+  (run 1 [out] (eval-expo `(quote (car (cons ((λ (x) x) y) (quote ())))) [[`y 42]] out))
 
   ; list
   (run 1 [out] (eval-expo `(list '() '() '()) [] out))
@@ -208,12 +255,68 @@
   (run 2 [q] (eval-expo q [] `(I love you)))
 
   ; quite (eval expr) => expr
+  ; TODO: re-run this with absento that checks head and tail
   (run 1 [q] (eval-expo q [] q))
 
   (run 1 [p q] 
        (!= p q)
        (eval-expo q [] p)
        (eval-expo p [] q))
+
+  (run 1 [q] (eval-expo `(cons (quote a) (quote b)) [] q))
+  (run 1 [q] (eval-expo `(car (quote (a (b c)))) [] q))
+  (run 1 [q] (eval-expo `(cdr (quote (a (b c)))) [] q))
+  (run 1 [q] (eval-expo `(null? (quote ())) [] q))
+  (run 1 [q] (eval-expo `(null? (cdr (quote (4 ())))) [] q))
+  (run 1 [q] (eval-expo `(if (null? (quote ())) (quote t) (quote f)) [] q))
+  (run 1 [q] (eval-expo `(if (null? (quote (2))) (quote t) (quote f)) [] q))
+
+  (run 1 [q] (eval-expo `(cons (quote a) (cons (quote b) (cons (quote c) (quote ())))) [] q))
+  (run 1 [q] (eval-expo `(car (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
+  (run 1 [q] (eval-expo `(cdr (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
+
+  (run*  [q]
+    (eval-expo
+     `((((λ (f)
+        ((λ (x) (f (x x))) 
+         (λ (x) (λ (y) ((f (x x)) y)))))
+
+       (λ [myappend3]
+          (λ (l)
+            (λ (s)
+              (if (null? l) 
+                s
+                (cons (car l) ((myappend3 (cdr l)) s)))))))
+     (quote (a b c))) (quote (d e))) [] q)) 
+
+  (run*  [q]
+    (eval-expo
+     `((((λ (f)
+        ((λ (x) (f (x x))) 
+         (λ (x) (λ (y) ((f (x x)) y)))))
+
+       (λ [myappend3]
+          (λ (l)
+            (λ (s)
+              (if (null? l) 
+                s
+                (cons (car l) ((myappend3 (cdr l)) s)))))))
+     (quote (a b c))) (quote ~q)) [] `(a b c d e))) 
+
+  (run* [x y]
+    (eval-expo
+     `((((λ (f)
+        ((λ (x) (f (x x))) 
+         (λ (x) (λ (y) ((f (x x)) y)))))
+
+       (λ [myappend3]
+          (λ (l)
+            (λ (s)
+              (if (null? l) 
+                s
+                (cons (car l) ((myappend3 (cdr l)) s)))))))
+     (quote ~x)) (quote ~y)) [] `(a b c d e))) 
+
 )
 
 
