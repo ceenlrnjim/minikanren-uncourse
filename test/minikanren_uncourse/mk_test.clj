@@ -11,6 +11,11 @@
     ))
 
 (deftest ext-s-test
+  (testing "ext-s"
   (is (= false (ext-s (lvar :a) (lvar :b) (ext-s (lvar :b) (lvar :a) (empty-s)))))
+  (is (= false (ext-s (lvar :a) (lvar :a) (empty-s))))
+  (is (= (walk (lvar :a)
+               (ext-s (lvar :a) 4 (empty-s)))
+         4)))
   )
 

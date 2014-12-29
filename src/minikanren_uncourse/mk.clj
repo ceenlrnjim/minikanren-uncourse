@@ -9,7 +9,7 @@
   (vector name))
 
 (defn lvar? [x]
-  (vector? x))
+  (and (vector? x) (= (count x) 1)))
 
 ; empty substitution
 (defn empty-s [] [])
@@ -32,12 +32,14 @@
 (defn ext-s-no-check [x v s]
   (cons [x v] s))
 
+(defn pair? [x]
+  (and (vector? x) (= (count x) 2)))
+
 (defn occurs [x v s]
   (let [sv (walk v s)]
     (cond
       (lvar? sv) (= sv x)
-      ; TODO: lvar? is actually vector? so this won't work
-      (vector? sv) (or 
+      (pair? sv) (or 
                      (occurs x (first sv) s)
                      (occurs x (second sv) s))
       :else false)))
@@ -47,3 +49,17 @@
     false
     (ext-s-no-check x v s)))
 
+(defn unify [u v s]
+  (let [u (walk u s)  ;note shadowing
+        v (walk v s)] ;note shadowing
+    (cond
+      (= u v) s ; they are already the same in s, no change
+      (lvar? u) ; still a variable, not in s
+        (if (lvar? v)
+          (ext-s-no-check u v s) ; unifying two lvars, since these are still lvars, they don't exist in the substitution and can be unified
+          (ext-s u v s)) ; since v isn't a var it is in s somewhere and we need to check for circularity
+      (lvar? v) (ext-s v u s) ; u is not a variable, so again we need to check for circularity
+      (and (pair? u) (pair? v)) ; both are already in s
+        (let [s (unify (first u) (first v) s)]
+          (and s (unify (second u) (second v) s)))
+      :else false)))
