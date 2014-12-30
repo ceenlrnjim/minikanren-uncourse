@@ -147,6 +147,7 @@
               [(!= pred-value false) (eval-expo te env out)]))]
 
     ; abstractions - lambda definitions
+    ; TODO: lambdas with multiple arguments
     [(fresh [arg body] 
        (== expr `(λ (~arg) ~body))
        (== out [:closure arg body env])
@@ -155,6 +156,7 @@
        )]
 
     ; function application
+    ; application with multiple arguments
     [(fresh [e1 e2 body arg value extended-env closure-env]
             (== expr `(~e1 ~e2))
             (eval-expo e1 env [:closure arg body closure-env])
