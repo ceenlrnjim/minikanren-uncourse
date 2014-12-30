@@ -44,6 +44,15 @@
               (!= h v)
               (unboundo v r))])))
 
+(defn extendo* [syms values env out]
+  (conde
+    [(== syms '()) (== out env)]
+    [(fresh [s ss v vs res]
+            (conso s ss syms)
+            (conso v vs values)
+            (conso [s v] res out)
+            (extendo* ss vs env res))]))
+
 (declare eval-expo)
 
 (defn eval-exp*o [exprs env out]
@@ -148,20 +157,27 @@
 
     ; abstractions - lambda definitions
     ; TODO: lambdas with multiple arguments
-    [(fresh [arg body] 
-       (== expr `(λ (~arg) ~body))
-       (== out [:closure arg body env])
-       (symbolo/symbolo arg)
+    [(fresh [args body] 
+       (== expr `(λ ~args ~body))
+       (== out [:closure args body env])
+       ;(symbolo/symbolo arg) ; TODO: check that everything is a symbol
        (unboundo `λ env)
        )]
 
     ; function application
     ; application with multiple arguments
-    [(fresh [e1 e2 body arg value extended-env closure-env]
-            (== expr `(~e1 ~e2))
-            (eval-expo e1 env [:closure arg body closure-env])
-            (eval-expo e2 env value)
-            (conso [arg value] closure-env extended-env)
+    [(fresh [funcexp funcargs procargs body values extended-env closure-env]
+            (conso funcexp funcargs expr)
+            ;(!= funcexp `quote)
+            ;(!= funcexp `null?)
+            ;(!= funcexp `if)
+            ;(!= funcexp `cons)
+            ;(!= funcexp `car)
+            ;(!= funcexp `cdr)
+            ;(!= funcexp `list)
+            (extendo* procargs values closure-env extended-env)
+            (eval-expo funcexp env [:closure procargs body closure-env])
+            (eval-exp*o funcargs env values)
             (eval-expo body extended-env out))]))
 
     ; numbers
@@ -319,6 +335,10 @@
                 (cons (car l) ((myappend3 (cdr l)) s)))))))
      (quote ~x)) (quote ~y)) [] `(a b c d e))) 
 
+
+  ; multiple argument abstraction/application
+  (run 1 [out] (eval-expo `(λ (x y z) (list z y x)) [] out))
+  (run 1 [out] (eval-expo `((λ (x y z) (list z y x)) (quote a) (quote b) (quote c)) [] out))
 )
 
 
