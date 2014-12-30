@@ -176,13 +176,14 @@
     ; application with multiple arguments
     [(fresh [funcexp funcargs procargs body values extended-env closure-env]
             (conso funcexp funcargs expr)
-            (!= funcexp `quote)
-            (!= funcexp `null?)
-            (!= funcexp `if)
-            (!= funcexp `cons)
-            (!= funcexp `car)
-            (!= funcexp `cdr)
-            (!= funcexp `list)
+            ; TODO: this disequality only holds if quote is unbound
+            ;(conde [(unboundo `quote env) (== funcexp `quote)] [(!= funcexp `quote)])
+            ;(!= funcexp `null?)
+            ;(!= funcexp `if)
+            ;(!= funcexp `cons)
+            ;(!= funcexp `car)
+            ;(!= funcexp `cdr)
+            ;(!= funcexp `list)
             ; note: this ordering is required to get queries to complete quickly
             (eval-exp*o funcargs env values)
             (extendo* procargs values closure-env extended-env)
@@ -264,7 +265,7 @@
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
 
   (run 1 [out] (eval-expo `() [] out))
-  (run 1 [out] (eval-expo `(quote foobar) [] out))
+  (run 2 [out] (eval-expo `(quote foobar) [] out))
 
   (run 1 [out] (eval-expo `(quote (car (cons ((λ (x) x) y) (quote ())))) [[`y 42]] out))
 
@@ -284,7 +285,9 @@
   (run 2 [q] (eval-expo q [] [:closure `x `x []]))
 
   ; demonstrate that quoting doesn't handle shadowing
-  (run* [q] (eval-expo `((λ (quote) (quote quote)) (λ (y) y)) [] q))
+  (run 1 [q] (eval-expo `((λ (quote) quote) (λ (y) y)) [] q))
+  (run 2 [q] (eval-expo `((λ (quote) (quote quote)) (λ (y) y)) [] q))
+  (run 1 [q] (eval-expo `((λ (car) (car car)) (λ (y) y)) [] q))
   ; => returns quote and the closure without unboundo
 
   (run 2 [q] (eval-expo q [] `(I love you)))
