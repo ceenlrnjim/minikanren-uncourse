@@ -164,6 +164,15 @@
        (unboundo `λ env)
        )]
 
+    ;[(fresh [arg body] 
+       ;(== expr `(λ (~arg) ~body))
+       ;(== out [:closure arg body env])
+       ;(symbolo/symbolo arg)
+       ;(unboundo `λ env)
+       ;)]
+
+
+
     ; function application
     ; application with multiple arguments
     [(fresh [funcexp funcargs procargs body values extended-env closure-env]
@@ -179,6 +188,14 @@
             (eval-expo funcexp env [:closure procargs body closure-env])
             (eval-exp*o funcargs env values)
             (eval-expo body extended-env out))]))
+
+    ; function application
+    ;[(fresh [e1 e2 body arg value extended-env closure-env]
+            ;(== expr `(~e1 ~e2))
+            ;(eval-expo e1 env [:closure arg body closure-env])
+            ;(eval-expo e2 env value)
+            ;(conso [arg value] closure-env extended-env)
+            ;(eval-expo body extended-env out))]  
 
     ; numbers
     ;[(symbolo/numbero expr) (== out expr)]
