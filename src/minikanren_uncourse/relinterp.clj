@@ -5,6 +5,7 @@
 ; call-by-value, environment passing, lambda calculus interpreter in miniKanren
 ; -----------------------------------------------------------------
 (ns minikanren-uncourse.relinterp
+  (:refer-clojure :exclude [==])
   (:require [symbolo.core :as symbolo])
   (:use clojure.core.logic))
 
@@ -171,22 +172,21 @@
        ;(unboundo `λ env)
        ;)]
 
-
-
     ; function application
     ; application with multiple arguments
     [(fresh [funcexp funcargs procargs body values extended-env closure-env]
             (conso funcexp funcargs expr)
-            ;(!= funcexp `quote)
-            ;(!= funcexp `null?)
-            ;(!= funcexp `if)
-            ;(!= funcexp `cons)
-            ;(!= funcexp `car)
-            ;(!= funcexp `cdr)
-            ;(!= funcexp `list)
+            (!= funcexp `quote)
+            (!= funcexp `null?)
+            (!= funcexp `if)
+            (!= funcexp `cons)
+            (!= funcexp `car)
+            (!= funcexp `cdr)
+            (!= funcexp `list)
+            ; note: this ordering is required to get queries to complete quickly
+            (eval-exp*o funcargs env values)
             (extendo* procargs values closure-env extended-env)
             (eval-expo funcexp env [:closure procargs body closure-env])
-            (eval-exp*o funcargs env values)
             (eval-expo body extended-env out))]))
 
     ; function application
