@@ -49,6 +49,7 @@
     false
     (ext-s-no-check x v s)))
 
+; TODO: left off here - need to understand this before proceeding
 (defn unify [u v s]
   (let [u (walk u s)  ;note shadowing
         v (walk v s)] ;note shadowing

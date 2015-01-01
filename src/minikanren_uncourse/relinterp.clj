@@ -5,7 +5,7 @@
 ; call-by-value, environment passing, lambda calculus interpreter in miniKanren
 ; -----------------------------------------------------------------
 (ns minikanren-uncourse.relinterp
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== quote cons list])
   (:require [symbolo.core :as symbolo])
   (:use clojure.core.logic))
 
@@ -97,6 +97,16 @@
   (run 1 [q] (absento :closure '(1 2 3 4 [:not-closure] 5 6)))
   )
 
+; due to the namespaceing with the syntax quote, we need the special form symbols to be exported
+; so that the equality will pass when used in other namespaces
+(declare λ)
+(declare list)
+(declare cons)
+(declare cdr)
+(declare car)
+(declare quote)
+(declare null?)
+
 (defn eval-expo [expr env out]
   (conde
 
@@ -157,7 +167,6 @@
               [(!= pred-value false) (eval-expo te env out)]))]
 
     ; abstractions - lambda definitions
-    ; TODO: lambdas with multiple arguments
     [(fresh [args body] 
        (== expr `(λ ~args ~body))
        (== out [:closure args body env])
@@ -220,42 +229,8 @@
             ;(extendo env k v extended-env)
             ;(eval-expo body extended-env out))]
 
-; as previously defined - converted from scheme implementation
-(defn myappend [l s]
-  (cond
-    (empty? l) s
-    :else (cons (first l) (myappend (rest l) s))))
-
-(defn myappendo [l s out]
-  (conde
-    [(== '() l) (== s out)]
-    [(fresh (h t res)
-      (conso h t l)
-      (conso h res out)
-      (myappendo t s res))]))
-
-
-; replacing with a new definition to make implementation in our interpreter simpler
-(defn myappend2 [l]
-  ; need to curry since our interpreter only takes one argument
-  (fn [s]
-    (if (empty? l) 
-      s
-      (cons (first l) ((myappend2 (rest l)) s)))))
 
 (comment
-  ((myappend2 [1 2 3]) [4 5 6])
-  )
-
-
-(defn Y [f]
-  ((fn [x] (f (x x))) 
-   (fn [x] (f (x x)))))
-
-
-(comment
-  (run 1 [out] (eval-expo `a [[`a 1]] out))
-
   (run 1 [out] (eval-expo `(λ (x) x) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
@@ -312,6 +287,37 @@
   (run 1 [q] (eval-expo `(cons (quote a) (cons (quote b) (cons (quote c) (quote ())))) [] q))
   (run 1 [q] (eval-expo `(car (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
   (run 1 [q] (eval-expo `(cdr (cons (quote a) (cons (quote b) (cons (quote c) (quote ()))))) [] q))
+
+  ; as previously defined - converted from scheme implementation
+  (defn myappend [l s]
+    (cond
+      (empty? l) s
+      :else (cons (first l) (myappend (rest l) s))))
+
+  (defn myappendo [l s out]
+    (conde
+      [(== '() l) (== s out)]
+      [(fresh (h t res)
+        (conso h t l)
+        (conso h res out)
+        (myappendo t s res))]))
+
+
+  ; replacing with a new definition to make implementation in our interpreter simpler
+  (defn myappend2 [l]
+    ; need to curry since our interpreter only takes one argument
+    (fn [s]
+      (if (empty? l) 
+        s
+        (cons (first l) ((myappend2 (rest l)) s)))))
+
+  ((myappend2 [1 2 3]) [4 5 6])
+
+  (defn Y [f]
+    ((fn [x] (f (x x))) 
+     (fn [x] (f (x x)))))
+
+
 
   (run*  [q]
     (eval-expo
