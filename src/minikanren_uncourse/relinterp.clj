@@ -231,25 +231,6 @@
 
 
 (comment
-  (run 1 [out] (eval-expo `(λ (x) x) [[`y 42]] out))
-  (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
-  (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
-  (run 1 [out] (eval-expo `((λ (λ) λ) x) [[`x 1]] out))
-
-  ; TODO: is absento messing this up
-  (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
-
-  (run 1 [out] (eval-expo `() [] out))
-  (run 2 [out] (eval-expo `(quote foobar) [] out))
-
-  (run 1 [out] (eval-expo `(quote (car (cons ((λ (x) x) y) (quote ())))) [[`y 42]] out))
-
-  ; list
-  (run 1 [out] (eval-expo `(list '() '() '()) [] out))
-  (run 2 [out] (eval-expo `(list a b c d e) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
-  (run 2 [out] (eval-expo out `() `(5 6 [:closure z y [[`y 7]]])))
-  (run 1 [out] (eval-expo `((λ (list) list) x) [[`x 1] [`y 2] [`z 3]] out))
-
   ; both the following return the same closure
   (run* [q] (eval-expo `(λ (x) x) [] q))
   (run* [q] (eval-expo `((λ (y) y) 
