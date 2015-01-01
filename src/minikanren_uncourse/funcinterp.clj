@@ -92,26 +92,26 @@
           
     ; Handle abstraction - defining functions
          ; Using a tagged vector to represent functions
-    [(['λ [arg] body] :seq)] [:closure arg body env] ; storing the environment is what give us lexical scope, shadowing, etc.
+    [(['λ args body] :seq)] [:closure args body env] ; storing the environment is what give us lexical scope, shadowing, etc.
           
     ; Handle function application
        ; note that we're only supporting functions of one argument 
        ; everything should be curried
-    [([e1 e2] :seq)]
+    [([e1 & args] :seq)]
       ; Note that in scheme order of evaluation between e1 and e2 is unspecified
       ; eval e1 - better eval to a closure, call it 'proc'
       ; eval e2 to some value
       ; apply proc to value
       (let [proc (eval-exp e1 env)
-            value (eval-exp e2 env)]
+            values (map #(eval-exp % env) args)]
         ; note vector matching here, not seq since I create the closure data structure
         ; as a vector
         (match [proc]
-               [[:closure arg body proc-env]] 
+               [[:closure proc-args body proc-env]] 
                   ; evaluate the body in an extended environment in which
                   ; the environment of the closure is extended with a binding between
                   ; x and value
-                  (eval-exp body (extend-env proc-env arg value)) ; using env here instead of proc-env would give dynamic instead of lexical scope
+                  (eval-exp body (reduce (fn [e [n v]] (extend-env e n v)) proc-env (map vector proc-args values))) ; using env here instead of proc-env would give dynamic instead of lexical scope
                [_] (throw (IllegalArgumentException. (str "e1 does not evaluate to a procedure" proc)))))
       
     ; Error - not a valid expression
@@ -220,7 +220,11 @@
             (if (null? l) 
               s
               (cons (car l) ((myappend3 (cdr l)) s)))))))
-   (quote (a b c))) (quote (d e))) []))
+   (quote (a b c))) (quote (d e))) [])
+  
+  ; multiple argument functions/applications
+  (eval-exp '((λ [x y z] (list x y z)) 1 2 3) [])
+  )
  
   
 ; scheme list implementation

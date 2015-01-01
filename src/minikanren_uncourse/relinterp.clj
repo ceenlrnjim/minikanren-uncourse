@@ -5,6 +5,7 @@
 ; call-by-value, environment passing, lambda calculus interpreter in miniKanren
 ; -----------------------------------------------------------------
 (ns minikanren-uncourse.relinterp
+  (:refer-clojure :exclude [==])
   (:require [symbolo.core :as symbolo])
   (:use clojure.core.logic))
 
@@ -28,9 +29,11 @@
       [(== k sym) (== v out)]
       [(!= k sym) (lookupo sym r out)])))
 
-(defn extendo [env k v out]
-  (symbolo/symbolo k)
-  (conso [k v] env out))
+(comment
+  (run 1 [q] (lookupo 'x [['x 1] ['x 2]] q))
+  (run 1 [q] (lookupo 'y [['x 1] ['x 2]] q))
+  (run 1 [q] (lookupo q [['x 1] ['y 2]] 2))
+  )
 
 (defn unboundo [v env]
   (fresh []
@@ -41,6 +44,15 @@
               (conso [h t] r env)
               (!= h v)
               (unboundo v r))])))
+
+(defn extendo* [syms values env out]
+  (conde
+    [(== syms '()) (== out env)]
+    [(fresh [s ss v vs res]
+            (conso s ss syms)
+            (conso v vs values)
+            (conso [s v] res out)
+            (extendo* ss vs env res))]))
 
 (declare eval-expo)
 
@@ -100,7 +112,7 @@
     ; list
     [(fresh [args] 
             (conso `list args expr)
-            (unboundo 'quote env)
+            (unboundo `list env)
             (eval-exp*o args env out))]
 
     ; cons
@@ -145,19 +157,46 @@
               [(!= pred-value false) (eval-expo te env out)]))]
 
     ; abstractions - lambda definitions
-    [(fresh [arg body] 
-       (== expr [`λ [arg] body] )
+    ; TODO: lambdas with multiple arguments
+    [(fresh [args body] 
+       (== expr `(λ ~args ~body))
+       (== out [:closure args body env])
+       ;(symbolo/symbolo arg) ; TODO: check that everything is a symbol
        (unboundo `λ env)
-       (symbolo/symbolo arg)
-       (== out [:closure arg body env]))]
+       )]
+
+    ;[(fresh [arg body] 
+       ;(== expr `(λ (~arg) ~body))
+       ;(== out [:closure arg body env])
+       ;(symbolo/symbolo arg)
+       ;(unboundo `λ env)
+       ;)]
 
     ; function application
-    [(fresh [e1 e2 body arg value extended-env closure-env]
-            (== expr [e1 e2])
-            (eval-expo e1 env [:closure arg body closure-env])
-            (eval-expo e2 env value)
-            (extendo closure-env arg value extended-env)
+    ; application with multiple arguments
+    [(fresh [funcexp funcargs procargs body values extended-env closure-env]
+            (conso funcexp funcargs expr)
+            ; TODO: this disequality only holds if quote is unbound
+            ;(conde [(unboundo `quote env) (== funcexp `quote)] [(!= funcexp `quote)])
+            ;(!= funcexp `null?)
+            ;(!= funcexp `if)
+            ;(!= funcexp `cons)
+            ;(!= funcexp `car)
+            ;(!= funcexp `cdr)
+            ;(!= funcexp `list)
+            ; note: this ordering is required to get queries to complete quickly
+            (eval-exp*o funcargs env values)
+            (extendo* procargs values closure-env extended-env)
+            (eval-expo funcexp env [:closure procargs body closure-env])
             (eval-expo body extended-env out))]))
+
+    ; function application
+    ;[(fresh [e1 e2 body arg value extended-env closure-env]
+            ;(== expr `(~e1 ~e2))
+            ;(eval-expo e1 env [:closure arg body closure-env])
+            ;(eval-expo e2 env value)
+            ;(conso [arg value] closure-env extended-env)
+            ;(eval-expo body extended-env out))]  
 
     ; numbers
     ;[(symbolo/numbero expr) (== out expr)]
@@ -220,11 +259,13 @@
   (run 1 [out] (eval-expo `(λ (x) x) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) [[`y 42]] out))
   (run 1 [out] (eval-expo `((λ (x) x) y) out 42))
+  (run 1 [out] (eval-expo `((λ (λ) λ) x) [[`x 1]] out))
 
   ; TODO: is absento messing this up
   (run 1 [out] (eval-expo `((λ (x) x) ~out) [] 42))
 
   (run 1 [out] (eval-expo `() [] out))
+  (run 2 [out] (eval-expo `(quote foobar) [] out))
 
   (run 1 [out] (eval-expo `(quote (car (cons ((λ (x) x) y) (quote ())))) [[`y 42]] out))
 
@@ -232,6 +273,7 @@
   (run 1 [out] (eval-expo `(list '() '() '()) [] out))
   (run 2 [out] (eval-expo `(list a b c d e) [[`a 1] [`b 2] [`c 3] [`d 4] [`e 5]] out))
   (run 2 [out] (eval-expo out `() `(5 6 [:closure z y [[`y 7]]])))
+  (run 1 [out] (eval-expo `((λ (list) list) x) [[`x 1] [`y 2] [`z 3]] out))
 
   ; both the following return the same closure
   (run* [q] (eval-expo `(λ (x) x) [] q))
@@ -243,7 +285,9 @@
   (run 2 [q] (eval-expo q [] [:closure `x `x []]))
 
   ; demonstrate that quoting doesn't handle shadowing
-  (run* [q] (eval-expo `((λ (quote) (quote quote)) (λ (y) y)) [] q))
+  (run 1 [q] (eval-expo `((λ (quote) quote) (λ (y) y)) [] q))
+  (run 2 [q] (eval-expo `((λ (quote) (quote quote)) (λ (y) y)) [] q))
+  (run 1 [q] (eval-expo `((λ (car) (car car)) (λ (y) y)) [] q))
   ; => returns quote and the closure without unboundo
 
   (run 2 [q] (eval-expo q [] `(I love you)))
@@ -311,6 +355,10 @@
                 (cons (car l) ((myappend3 (cdr l)) s)))))))
      (quote ~x)) (quote ~y)) [] `(a b c d e))) 
 
+
+  ; multiple argument abstraction/application
+  (run 1 [out] (eval-expo `(λ (x y z) (list z y x)) [] out))
+  (run 1 [out] (eval-expo `((λ (x y z) (list z y x)) (quote a) (quote b) (quote c)) [] out))
 )
 
 
