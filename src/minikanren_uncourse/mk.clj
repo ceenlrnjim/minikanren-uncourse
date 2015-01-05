@@ -3,7 +3,7 @@
 ; I am aware core.logic exists, this is just my attempt to understand how
 ; this magic stuff works
 (ns minikanren-uncourse.mk
-  )
+  (:refer-clojure :exclude [reify]))
 
 (defn lvar [name]
   (vector name))
@@ -76,3 +76,20 @@
         (let [s (unify-no-check (first u) (first v) s)]
           (and s (unify-no-check (second u) (second v) s)))
       :else false)))
+
+;"Reification is the process of turning a miniKanren term into a Scheme value that
+;does not contain logic variables. The reify function takes a substitution s and an
+;arbitrary value v, perhaps containing variables, and returns the reified value of v."
+;(defn reify [v s]
+  ;(let [v (walk* v s)]
+    ;(walk* v (reify-s v empty-s))
+    ;)
+  ;)
+
+; deep walk a substitution
+(defn walk* [v s]
+  (let [v (walk v s)]
+    (cond
+      (lvar? v) v
+      (pair? v) (vector (walk* (first v) s) (walk* (second v) s))
+      :else v)))

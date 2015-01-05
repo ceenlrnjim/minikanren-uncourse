@@ -1,4 +1,5 @@
 (ns minikanren-uncourse.mk-test
+  (:refer-clojure :exclude [reify])
   (:use [minikanren-uncourse.mk])
   (:use [clojure.test]))
 
@@ -44,3 +45,8 @@
     (is (= false (unify-no-check (lvar :a) (lvar :c) s3)))
     (is (unify-no-check 4 4 (empty-s)))
     (is (not (unify-no-check 4 5 (empty-s))))))
+
+(deftest walk*-test
+  (let [s [[(lvar :z) 6] [(lvar :y) 5] [(lvar :x) [(lvar :y) (lvar :z)]]]]
+    (is (= (walk (lvar :x) s) [(lvar :y) (lvar :z)]))
+    (is (= (walk* (lvar :x) s) [5 6]))))
