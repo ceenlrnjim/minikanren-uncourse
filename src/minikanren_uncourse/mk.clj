@@ -64,3 +64,15 @@
         (let [s (unify (first u) (first v) s)]
           (and s (unify (second u) (second v) s)))
       :else false)))
+
+(defn unify-no-check [u v s]
+  (let [u (walk u s)
+        v (walk v s)]
+    (cond
+      (= u v) s 
+      (lvar? u) (ext-s-no-check u v s)
+      (lvar? v) (ext-s-no-check v u s)
+      (and (pair? u) (pair? v)) 
+        (let [s (unify-no-check (first u) (first v) s)]
+          (and s (unify-no-check (second u) (second v) s)))
+      :else false)))
