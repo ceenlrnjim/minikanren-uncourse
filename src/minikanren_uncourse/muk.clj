@@ -65,4 +65,60 @@
 ;       extending the substitution very cheap, though lookups are more expensive
 ;         
 ;
-;   constraint store (more general notion)
+;   constraint store (more general notion) and substitution representations drive a lot of the design and constraints of the system
+;
+;   Triangular vs. idempotent substitution - apply-subst
+
+; variable interface
+; (lvar 0) - constructor, makes a new variable
+; (lvar? t) - true or false
+; (lvar-eq? v1 v2) - true or false
+
+(defn lvar [i] {:lvarid i})
+(defn lvar? [l]
+  (and (map? l) (contains? l :lvarid)))
+
+(defn lvar-eq? [a b]
+  (and (lvar? a)
+       (lvar? b)
+       (= (:lvarid a) (:lvarid b)))  )
+
+; (walk 5 `((,x . 7))) => 5
+; (walk y `((,x . 7))) => y
+; (walk `(,x ,y) `((,x . 7) (,y . 6))) => `(,x . ,y)
+(defn walk 
+  "walk term t in substitution s"
+  [t s]
+  (cond
+    (lvar? t) 
+      (let [pr (get s t)]
+        (if pr
+          (recur pr s)
+          t)) ; not found, return the term
+    :else t)); if the term is not a variable just return the term
+
+(defn ext-s [u v s]
+  ; I'm using maps instead of association lists
+  (assoc s u v))
+
+(defn pair? [t]
+  (and (vector? t) (= (count t) 2)))
+
+; if unification succeeds, it returns a substitution (map) that would make the
+; two terms equal
+(defn unify 
+  [u v s]
+  (let [u (walk u s) ; note shadowing
+        v (walk v s)]
+    (cond
+      ; both u and v walk to the same variable, just return s without changes
+      (and (lvar? u) (lvar? v) (lvar-eq? u v)) 
+        s
+      (lvar? u) ; either v is not a variable, or it is but isn't the same as u
+        (ext-s u v s) ; we're missing the occurs? check to make sure that you're not unifying a variable with a term that contains that same variable
+      (lvar? v) ; we know that u is not a variable
+        (ext-s v u s)
+      (and (pair? u) (pair? v)) ; pairwise unification on the cars and cdrs
+        (let [s (unify (first u) (first v) s)]
+          (and s (unify (second u) (second v) s))) ; note - using and as an if statement
+      :else (and (== u v) s)))) ; use host language equivalence to test if these values are the same
