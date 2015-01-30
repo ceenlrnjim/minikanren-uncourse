@@ -60,6 +60,9 @@
 ;            
 ;     Property of our subsitution is that a logic variable appears on the left hand side of a substitution at most once
 ;       This is an important assumption our code will make
+;
+;     So our lookups can require multiple steps - if x maps to a variable, look up that variable again to see if it is mapped to another value, but this makes
+;       extending the substitution very cheap, though lookups are more expensive
 ;         
 ;
 ;   constraint store (more general notion)
