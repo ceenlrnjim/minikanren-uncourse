@@ -72,13 +72,13 @@
 ; variable interface
 ; (lvar 0) - constructor, makes a new variable
 ; (lvar? t) - true or false
-; (lvar-eq? v1 v2) - true or false
+; (lvar=? v1 v2) - true or false
 
 (defn lvar [i] {:lvarid i})
 (defn lvar? [l]
   (and (map? l) (contains? l :lvarid)))
 
-(defn lvar-eq? [a b]
+(defn lvar=? [a b]
   (and (lvar? a)
        (lvar? b)
        (= (:lvarid a) (:lvarid b)))  )
@@ -91,13 +91,15 @@
   [t s]
   (cond
     (lvar? t) 
-      (let [pr (get s t)]
+      (let [pr (get s t)] ; note - using clojure map instead of association list
         (if pr
           (recur pr s)
           t)) ; not found, return the term
     :else t)); if the term is not a variable just return the term
 
-(defn ext-s [u v s]
+(defn ext-s 
+  "extend a substitution with the paur (u . v)"
+  [u v s]
   ; I'm using maps instead of association lists
   (assoc s u v))
 
@@ -106,13 +108,16 @@
 
 ; if unification succeeds, it returns a substitution (map) that would make the
 ; two terms equal
+; this unifier only handles lvars, pairs, and things that are comparable with ==,
+;   using a  typeclass/protocol based approach for the final comparison allows
+;   for an extensible unifier
 (defn unify 
   [u v s]
   (let [u (walk u s) ; note shadowing
         v (walk v s)]
     (cond
       ; both u and v walk to the same variable, just return s without changes
-      (and (lvar? u) (lvar? v) (lvar-eq? u v)) 
+      (and (lvar? u) (lvar? v) (lvar=? u v)) 
         s
       (lvar? u) ; either v is not a variable, or it is but isn't the same as u
         (ext-s u v s) ; we're missing the occurs? check to make sure that you're not unifying a variable with a term that contains that same variable
@@ -121,4 +126,62 @@
       (and (pair? u) (pair? v)) ; pairwise unification on the cars and cdrs
         (let [s (unify (first u) (first v) s)]
           (and s (unify (second u) (second v) s))) ; note - using and as an if statement
-      :else (and (== u v) s)))) ; use host language equivalence to test if these values are the same
+      :else (and (= u v) s)))) ; use host language equivalence to test if these values are the same
+
+; unify can return one of three values
+;   1) false - failure to unify => there is no way to make u and v equal
+;   2) s - the same s we passed in, u and v are already equal so we're not extending the substitution
+;   3) s^ - updated subsitution - non-empty extension to s, we've added a new association; u & v are not equal but can be made equal
+
+; == is the goal constructor, unify is the core
+; =/= (disequality constraints) are dual to ==
+; (=/= 5 5) fails
+; (=/= 5 6) succeeds and can never be violated
+; (=/= 5 x) succeeds, but x can not be instantiated to 5 later on
+; (=/= `(5 . ,x) `(5 . ,y)) succeeds, but x and y can never be equal
+; (=/= `(5 . ,x) `(6 . ,y)) succeeds and the constraint can never be violated
+;
+; when a constraint cannot be violated, we can throw it away - never need to worry about it
+;
+; Comparing with unification - lots of symmetry
+; (== 5 5) (case 2) succeed, no need to extend substitution (throw away the constraint)
+; (== 5 6) (case 1) fails
+; (== 5 x) (3) succeeds, need to add constraint that x is 5 (extend substitution)
+; (== `(5 . ,x) `(5 . ,y)) (3) succeeds, simplify constraint that x == y
+; (== `(5 . ,x) `(6 . ,y)) (1) fails
+;
+; as it turns out == can be implemented in terms of unify, so can disunify
+
+; See Hubert Comon - solving disequations
+;
+; Note: we now need a constraint store which includes both a substitution 's' and a disequality constraint store 'd'
+; Note: Disequality store is a list of association lists (or a list of substitutions) - need the multiple pairs per disequality constraint
+; c = `(,s . ,d) 
+;   (could also use single store with constraints tagged by type)
+;   This is another place we could add extensibility by allowing different constraint types (symbolic, numeric, etc.)
+;
+; turn disequality constraints into equivalent equality constraint and look at the result
+; (=/= 5 5) => (== 5 5) and we get case (2) so we know we can fail since we get the same subsitution back from unify
+; (=/= 5 6) => (== 5 6) and we get back false (case 1), so we know these things can never be equal, so we can throw away this disequality constraint since it can never be violated, just return the original s
+; (=/= 5 x) => (== 5 x) and unification succeeds and returns s^ = ((x . 5) . s) (case 3)
+;                       prefix of s = ((x . 5)) <- mini-substitution
+;                       This mini-substitution is the normalized form of the disequality constraint and can be added to our 'd' part of the constraint store
+;                       This mini-substitution could contain multiple bindings, it doesn't have to be just one
+;
+; (=/= `(5 . ,x) `(5 . ,y)) => unification succeeds, returns a modified substitution, we take the prefix and add it to our 'd' part of the constraint store
+; (== `(5 . ,x) `(6 . ,y)) => unification fails (case 1), so we can throw away the constraint since as a disequality it can never be violated
+;
+; (fresh (x y z)
+;   (=/= `(,x . ,y) `(,z . 5)
+;   ; d = (((x . z) (y . 5)))    c = (s . d) <- note list of substitutions/association-lists as mentioned above
+;   (== y 5)))
+;   ; c = ( ((y.5) . s) ; <- new s
+;   ;       (((x . z) (y . 5))) ) <- d
+;
+;   think about this constraint in terms of the unification equivalent (==) which calls unify
+;   The unification succeeds and ends up with s^ = ((x . z) (y . 5) . s)
+;   Thus the prefix is the mini-substitution ((x . z) (y . 5)) and this is what goes in our 'd' (disequality part of the constraint store)
+;   Note: that these two conditions are a conjuction, we must violate both of them to violate the disequlaity constraint
+;
+;   But we need to make sure that we check to see that our other constraints don't violate our disequality constraints
+;
