@@ -184,4 +184,31 @@
 ;   Note: that these two conditions are a conjuction, we must violate both of them to violate the disequlaity constraint
 ;
 ;   But we need to make sure that we check to see that our other constraints don't violate our disequality constraints
+;   When we extend the substitution s with y == 5 to create s1, 
+;     how do we solve the disequality constraint (((x . z) (y . 5))) with respect to s1?
+;   Unify two terms in s1 and interpret the results as we did in interpreting the disequality constraint
+;     (failure means nothing changes in the constraint store,
+;      unchanged substitution means equality is satisfied so disequality should fail
+;      substitution is extended, we can use the prefix as additional disequality constraints)
 ;
+;   (unify u v `((,y . 5) . ,s)) -> what values of u and v do we give?  Our disequality constraint already has a representation of the constraint
+;   (unify `(,x . ,y) `(,z . 5) `((,y . 5) . ,s))  -> mapping over car/cdr, to undo the pairwise disequality we applied earlier
+;
+;   this causes 
+;     walking y will now result in 5, so this is equivalent to
+;
+;   (unify `(,x . ,5) `(,z . 5) `((,y . 5) . ,s))
+;   => (unify x z `((,y . 5) . ,s))
+;   => s^ = ((,x . ,z) . (,y . 5) . ,s) ; note that this substitution is only used to get the prefix which will be the new 'd', the rest is thrown away
+;   => prefix of s^ =  ((x . z))
+;   => now we only have to make x and z the same to violate the constraint (since y is already == to 5)
+;   => c = ( ((,y . 5) . ,s)
+;            (((x . y))) )
+;
+;   After extending the substitution, we use this algorithm to re-solve the disequality constraints to get the new 'd'
+;   If we tried to then unify (== x z)
+;   we would get a new subsitution s2 which would have (( x . z) (y . 5) . s),
+;     (unify x z s2) => x2, which means the disequality constraint fails since the equality constraint has already been realized
+;
+; Key idea -> we can use unification to solve both equality and disequality constraints.
+; We need to recheck the disequality constraints after any successfull unification that extends the substitution
