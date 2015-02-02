@@ -164,7 +164,7 @@
 ; (=/= 5 5) => (== 5 5) and we get case (2) so we know we can fail since we get the same subsitution back from unify
 ; (=/= 5 6) => (== 5 6) and we get back false (case 1), so we know these things can never be equal, so we can throw away this disequality constraint since it can never be violated, just return the original s
 ; (=/= 5 x) => (== 5 x) and unification succeeds and returns s^ = ((x . 5) . s) (case 3)
-;                       prefix of s = ((x . 5)) <- mini-substitution
+;                       prefix of s^ = ((x . 5)) <- mini-substitution
 ;                       This mini-substitution is the normalized form of the disequality constraint and can be added to our 'd' part of the constraint store
 ;                       This mini-substitution could contain multiple bindings, it doesn't have to be just one
 ;
@@ -212,3 +212,49 @@
 ;
 ; Key idea -> we can use unification to solve both equality and disequality constraints.
 ; We need to recheck the disequality constraints after any successfull unification that extends the substitution
+;
+; another couple examples
+; (fresh (x y)
+;   ; c = (s . d)
+;   (=/= x 5)
+;   ; c1 = (s (((x . 5)) . d)) (since x unifies with 5 creating a new mini-substitution)
+;   (=/= x 6)
+;   ; c2 = (s (((x . 6)) (since x unifies with 6)
+;   ;          ((x . 5)) 
+;   ;          . d))
+;   (=/= x y)
+;   ; c3 = (s (((x . y)) (since x unifies with y)
+;   ;          ((x . 6))
+;   ;          ((x . 5))
+;   ;          . d))
+;
+; (fresh (x y)
+;   ; c = (s . d)
+;   (=/= x y)
+;   ; c1 = (s (((x . y) . d)))
+;   (== x 5)
+;   ; c2 = ( ((x . 5) . s)
+;   ;        (((y . 5)) . d) )
+;   (== y 6))
+;   ; c3 = ( ((y . 6) (x . 5) . s)
+;   ;        d )
+
+; Subsumption - violating one constraint necessarily violates another constraint - so keeping both around is redundant
+; (fresh (x y z)
+;   ;; c= (s . d)
+;   (=/= x 5)
+;   ;; c1 = ( s  (((x . 5)) . d) )
+;   (=/= `(,x . ,y) `(5 . ,z)))
+;   ;; c2  ( s
+;   ;;       (((x . 5) (y . z))
+;   ;;        ((x . 5)) <- mini substitution for constraint x != 5
+;   ;;        . d)
+;
+;   Anytime we violate the second constraint, we would have violated the first constraint.
+;   So, the second constraint is redundant and we can throw it away.  It is "subsumed" by the first constraint.
+;   c2 = c1
+;
+;   We can use unification to perform the subsumption test (TODO: figure out how, to talk about next time -> answer is in the dissertation)
+;   "Essentials of Logic Programming" - Christopher Hogger - accessible, theory and foundations
+;
+;
