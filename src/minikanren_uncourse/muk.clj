@@ -81,12 +81,24 @@
 (declare lvar=?)
 
 
-(defn constraint-store []
-  {:substitution {}
-   :disequalities [] })
+; TODO: add pre-checks for argument types
+(defn constraint-store 
+  ( []
+    {:substitution {}
+     :disequalities [] })
+  ([s]
+   {:substitution s
+    :disequalities []})
+  ([s d]
+   {:substitution s
+    :disequalities d }))
 
 (defn substitution [c] (:substitution c))
 (defn disequalities [c] (:disequalities c))
+(defn add-diseq [c diseq-constraint]
+  (constraint-store
+    (substitution c)
+    (conj (disequalities c) diseq-constraint)))
 
 (defn pair? [t]
   (and (vector? t) (= (count t) 2)))
@@ -171,8 +183,7 @@
         ; TODO: faster implementation?
       :else 
         ; TODO: add accessor/mutators to clean this up
-        (assoc c :disequalities 
-               (conj  (:disequalities c) (apply dissoc (substitution unify-result) (keys (substitution c))))))))
+        (add-diseq c (apply dissoc (substitution unify-result) (keys (substitution c)))))))
 
 (comment
   (diseq 5 5 (constraint-store))
