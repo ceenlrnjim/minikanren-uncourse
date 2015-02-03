@@ -79,6 +79,7 @@
 (declare lvar)
 (declare lvar?)
 (declare lvar=?)
+(declare check-disequalities)
 
 
 ; TODO: add pre-checks for argument types
@@ -107,8 +108,9 @@
   "extend a substitution with the pair (u . v) if it doesn't violate any
   other constraints"
   [u v c]
-  ; I'm using maps instead of association lists
-  (assoc-in c [:substitution u] v))
+  (if (check-disequalities u v c) ; TODO: is this an appropriate place to put this, or should I put it in unify?
+    (assoc-in c [:substitution u] v)
+    false))
 ; =====================================================================
 
 
@@ -161,10 +163,14 @@
   (unify 5 5 (constraint-store))
   (unify 5 6 (constraint-store))
   (unify (lvar 0) 6 (constraint-store))
-  (unify (lvar 0) 6 (assoc-in (constraint-store) [:substitution (lvar 0)] 5))
+  (unify (lvar 0) 6 (ext-s (lvar 0) 5 (constraint-store)))
 )
 
-; TODO: try to implement disequality in micro-kanren as described below
+(defn check-disequalities
+  [c u v]
+  true)
+
+; try to implement disequality in micro-kanren as described below
 (defn diseq
   [u v c]
   (let [unify-result (unify u v c)]
@@ -182,7 +188,6 @@
         ; only those extentions added during this unification
         ; TODO: faster implementation?
       :else 
-        ; TODO: add accessor/mutators to clean this up
         (add-diseq c (apply dissoc (substitution unify-result) (keys (substitution c)))))))
 
 (comment
