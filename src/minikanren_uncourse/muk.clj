@@ -155,7 +155,7 @@
 ; TODO: try to implement disequality in micro-kanren as described below
 (defn diseq
   [u v c]
-  (let [unify-result (unify u v (:substitution c))]
+  (let [unify-result (unify u v c)]
     (cond 
         ; since unification fails, these two values cannot be equal, 
         ; so this disequality is always true and no new constraint is required
@@ -163,15 +163,16 @@
         ; since the unification succeeds without extending the substitution, 
         ; we know the values are already equal, and therefore this disequality
         ; constraint cannot be met
-      (= unify-result (:substitution c)) false 
+      (= unify-result c) false 
         ; unification succeeds, but the substitution has been extended, 
         ; revealing the disequality constraints we need to add.
         ; Take out all keys from unify-result that were already in the substitution, getting
         ; only those extentions added during this unification
         ; TODO: faster implementation?
       :else 
+        ; TODO: add accessor/mutators to clean this up
         (assoc c :disequalities 
-               (conj  (:disequalities c) (apply dissoc unify-result (keys (:substitution c))))))))
+               (conj  (:disequalities c) (apply dissoc (substitution unify-result) (keys (substitution c))))))))
 
 (comment
   (diseq 5 5 (constraint-store))
