@@ -73,15 +73,10 @@
 ; (lvar 0) - constructor, makes a new variable
 ; (lvar? t) - true or false
 ; (lvar=? v1 v2) - true or false
+(declare lvar)
+(declare lvar?)
+(declare lvar=?)
 
-(defn lvar [i] {:lvarid i})
-(defn lvar? [l]
-  (and (map? l) (contains? l :lvarid)))
-
-(defn lvar=? [a b]
-  (and (lvar? a)
-       (lvar? b)
-       (= (:lvarid a) (:lvarid b)))  )
 
 ; (walk 5 `((,x . 7))) => 5
 ; (walk y `((,x . 7))) => y
@@ -96,6 +91,13 @@
           (recur pr s)
           t)) ; not found, return the term
     :else t)); if the term is not a variable just return the term
+
+(comment
+  (walk (lvar 0) {(lvar 0) 5})
+  (walk (lvar 0) {(lvar 0) (lvar 1)})
+  (walk (lvar 0) {(lvar 1) (lvar 0)})
+  (walk (lvar 1) {(lvar 1) (lvar 0) (lvar 0) 5})
+  )
 
 (defn ext-s 
   "extend a substitution with the paur (u . v)"
@@ -128,6 +130,8 @@
           (and s (unify (second u) (second v) s))) ; note - using and as an if statement
       :else (and (= u v) s)))) ; use host language equivalence to test if these values are the same
 
+; TODO: try to implement disequality in micro-kanren as described below
+;
 ; unify can return one of three values
 ;   1) false - failure to unify => there is no way to make u and v equal
 ;   2) s - the same s we passed in, u and v are already equal so we're not extending the substitution
@@ -258,3 +262,25 @@
 ;   "Essentials of Logic Programming" - Christopher Hogger - accessible, theory and foundations
 ;
 ;
+; :::::::::::::::::::::::::::  Uncourse #9 :::::::::::::::::::::::::::::::::::
+;
+; How do we want to represent logic variables?
+; miniKanren uses vectors for simplicity and compatibility with old schemes
+; - this means you can't do unification over vectors
+; - vector has one variable which is the symbol used when introducing the variable
+; microKanren uses a vector with a numeric counter to differentiate them
+; - don't need to rely on specific notions of equality (eq? vs. eqv? vs equal?)
+; - just numeric equality
+; - but my x and y variables get converted to 0, 1, etc.
+; - also need some way of incrementing the counter (global counter w/set!, atom here in clojure)
+;
+; jlk: I'm going to use a map with a key that specifies its id
+(defn lvar [i] {:lvarid i})
+(defn lvar? [l]
+  (and (map? l) (= 1 (count (keys l))) (contains? l :lvarid)))
+
+(defn lvar=? [a b]
+  (and (lvar? a)
+       (lvar? b)
+       (= (:lvarid a) (:lvarid b))))
+
