@@ -69,6 +69,9 @@
 ;
 ;   Triangular vs. idempotent substitution - apply-subst
 
+; =====================================================================
+; Data structure and accessor definitions
+; =====================================================================
 ; variable interface
 ; (lvar 0) - constructor, makes a new variable
 ; (lvar? t) - true or false
@@ -78,35 +81,47 @@
 (declare lvar=?)
 
 
+(defn constraint-store []
+  {:substitution {}
+   :disequalities [] })
+
+(defn substitution [c] (:substitution c))
+(defn disequalities [c] (:disequalities c))
+
+(defn pair? [t]
+  (and (vector? t) (= (count t) 2)))
+
+(defn ext-s 
+  "extend a substitution with the pair (u . v) if it doesn't violate any
+  other constraints"
+  [u v c]
+  ; I'm using maps instead of association lists
+  (assoc-in c [:substitution u] v))
+; =====================================================================
+
+
 ; (walk 5 `((,x . 7))) => 5
 ; (walk y `((,x . 7))) => y
 ; (walk `(,x ,y) `((,x . 7) (,y . 6))) => `(,x . ,y)
 (defn walk 
   "walk term t in substitution s"
-  [t s]
-  (cond
-    (lvar? t) 
-      (let [pr (get s t)] ; note - using clojure map instead of association list
-        (if pr
-          (recur pr s)
-          t)) ; not found, return the term
-    :else t)); if the term is not a variable just return the term
+  [t c]
+  (let [s (substitution c)]
+    (cond
+      (lvar? t) 
+        (let [pr (get s t)] ; note - using clojure map instead of association list
+          (if pr
+            (recur pr c)
+            t)) ; not found, return the term
+      :else t))); if the term is not a variable just return the term
 
 (comment
-  (walk (lvar 0) {(lvar 0) 5})
-  (walk (lvar 0) {(lvar 0) (lvar 1)})
-  (walk (lvar 0) {(lvar 1) (lvar 0)})
-  (walk (lvar 1) {(lvar 1) (lvar 0) (lvar 0) 5})
-  )
+  (walk (lvar 0) (ext-s (lvar 0) 5 (constraint-store)))
+  (walk (lvar 0) (ext-s (lvar 1) (lvar 0) (constraint-store)))
+  (walk (lvar 1) (ext-s (lvar 1) (lvar 0) (constraint-store)))
+  (walk (lvar 1) (ext-s (lvar 1) (lvar 0) (ext-s (lvar 0) 5 (constraint-store))))
+)
 
-(defn ext-s 
-  "extend a substitution with the paur (u . v)"
-  [u v s]
-  ; I'm using maps instead of association lists
-  (assoc s u v))
-
-(defn pair? [t]
-  (and (vector? t) (= (count t) 2)))
 
 ; if unification succeeds, it returns a substitution (map) that would make the
 ; two terms equal
@@ -114,24 +129,61 @@
 ;   using a  typeclass/protocol based approach for the final comparison allows
 ;   for an extensible unifier
 (defn unify 
-  [u v s]
-  (let [u (walk u s) ; note shadowing
-        v (walk v s)]
+  [u v c]
+  (let [u (walk u c) ; note shadowing
+        v (walk v c)]
     (cond
       ; both u and v walk to the same variable, just return s without changes
       (and (lvar? u) (lvar? v) (lvar=? u v)) 
-        s
+        c
       (lvar? u) ; either v is not a variable, or it is but isn't the same as u
-        (ext-s u v s) ; we're missing the occurs? check to make sure that you're not unifying a variable with a term that contains that same variable
+        (ext-s u v c) ; we're missing the occurs? check to make sure that you're not unifying a variable with a term that contains that same variable
       (lvar? v) ; we know that u is not a variable
-        (ext-s v u s)
+        (ext-s v u c)
       (and (pair? u) (pair? v)) ; pairwise unification on the cars and cdrs
-        (let [s (unify (first u) (first v) s)]
-          (and s (unify (second u) (second v) s))) ; note - using and as an if statement
-      :else (and (= u v) s)))) ; use host language equivalence to test if these values are the same
+        (let [c (unify (first u) (first v) c)]
+          (and c (unify (second u) (second v) c))) ; note - using and as an if statement
+      :else (and (= u v) c)))) ; use host language equivalence to test if these values are the same
+
+(comment
+  (unify 5 5 (constraint-store))
+  (unify 5 6 (constraint-store))
+  (unify (lvar 0) 6 (constraint-store))
+  (unify (lvar 0) 6 (assoc-in (constraint-store) [:substitution (lvar 0)] 5))
+)
 
 ; TODO: try to implement disequality in micro-kanren as described below
-;
+(defn diseq
+  [u v c]
+  (let [unify-result (unify u v (:substitution c))]
+    (cond 
+        ; since unification fails, these two values cannot be equal, 
+        ; so this disequality is always true and no new constraint is required
+      (= unify-result false) c 
+        ; since the unification succeeds without extending the substitution, 
+        ; we know the values are already equal, and therefore this disequality
+        ; constraint cannot be met
+      (= unify-result (:substitution c)) false 
+        ; unification succeeds, but the substitution has been extended, 
+        ; revealing the disequality constraints we need to add.
+        ; Take out all keys from unify-result that were already in the substitution, getting
+        ; only those extentions added during this unification
+        ; TODO: faster implementation?
+      :else 
+        (assoc c :disequalities 
+               (conj  (:disequalities c) (apply dissoc unify-result (keys (:substitution c))))))))
+
+(comment
+  (diseq 5 5 (constraint-store))
+  (diseq 5 6 (constraint-store))
+  (diseq (lvar 0) 6 (constraint-store))
+  (diseq (lvar 0) 6 {:substitution {(lvar 0) 6} :disequalities []})
+  (diseq [(lvar 0) (lvar 2)] [(lvar 1) 5] (constraint-store))
+  )
+
+;   ------------------------------------------------------------------
+;   Implementing disequality in terms of unify
+;   ------------------------------------------------------------------
 ; unify can return one of three values
 ;   1) false - failure to unify => there is no way to make u and v equal
 ;   2) s - the same s we passed in, u and v are already equal so we're not extending the substitution
@@ -187,6 +239,9 @@
 ;   Thus the prefix is the mini-substitution ((x . z) (y . 5)) and this is what goes in our 'd' (disequality part of the constraint store)
 ;   Note: that these two conditions are a conjuction, we must violate both of them to violate the disequlaity constraint
 ;
+;   ------------------------------------------------------------------
+;   Checking Disequality when extending the substitution
+;   ------------------------------------------------------------------
 ;   But we need to make sure that we check to see that our other constraints don't violate our disequality constraints
 ;   When we extend the substitution s with y == 5 to create s1, 
 ;     how do we solve the disequality constraint (((x . z) (y . 5))) with respect to s1?
