@@ -108,9 +108,10 @@
   "extend a substitution with the pair (u . v) if it doesn't violate any
   other constraints"
   [u v c]
-  (if (check-disequalities u v c) ; TODO: is this an appropriate place to put this, or should I put it in unify?
-    (assoc-in c [:substitution u] v)
-    false))
+  (let [new-c (assoc-in c [:substitution u] v)]
+    (if (check-disequalities c new-c) ; TODO: is this an appropriate place to put this, or should I put it in unify?
+      new-c
+      false)))
 ; =====================================================================
 
 
@@ -166,9 +167,34 @@
   (unify (lvar 0) 6 (ext-s (lvar 0) 5 (constraint-store)))
 )
 
+(defn additional-constraints
+  "returns any constraints that have been added in b that are not in a"
+  [a b]
+  (apply dissoc (substitution b) (keys (substitution a))))
+
+(defn check-diseq
+  [s de]
+  ; de = {{:lvarid 0} 6}
+  ; s1 = {{:lvarid 0} 5} -> succeeds
+  ; s2 = {{:lvarid 0} 6} -> fails
+  (let [[k v] (first de) ; TODO: starting with simple, single condition constraint
+        res (unify k v (constraint-store s))]
+    (cond 
+      (= res false) true
+      (= res (constraint-store s)) false
+      )
+    ))
+
+; TODO: move all this stuff to tests
+(comment 
+  (check-diseq {{:lvarid 0} 5} {{:lvarid 0} 6})
+  (check-diseq {{:lvarid 0} 6} {{:lvarid 0} 6})
+  )
+
 (defn check-disequalities
-  [c u v]
-  true)
+  [old-c new-c]
+  true
+  )
 
 ; try to implement disequality in micro-kanren as described below
 (defn diseq
@@ -188,7 +214,8 @@
         ; only those extentions added during this unification
         ; TODO: faster implementation?
       :else 
-        (add-diseq c (apply dissoc (substitution unify-result) (keys (substitution c)))))))
+        (add-diseq c ;(apply dissoc (substitution unify-result) (keys (substitution c)))
+                   additional-constraints c unify-result))))
 
 (comment
   (diseq 5 5 (constraint-store))
