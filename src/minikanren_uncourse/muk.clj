@@ -109,9 +109,8 @@
   other constraints"
   [u v c]
   (let [new-c (assoc-in c [:substitution u] v)]
-    (if (check-disequalities c new-c) ; TODO: is this an appropriate place to put this, or should I put it in unify?
-      new-c
-      false)))
+    (check-disequalities c new-c))) ; TODO: is this an appropriate place to put this, or should I put it in unify?
+
 ; =====================================================================
 
 
@@ -193,7 +192,7 @@
   ; s2 = {{:lvarid 0} 6} -> fails
   (let [res (unify-diseq s de)]
     (cond 
-      (= res false) true
+      (= res false) de
       (= res (constraint-store s)) false
       :else (throw (UnsupportedOperationException. "TODO: modify d when unification adds new conditions")))))
 
@@ -207,7 +206,15 @@
 
 (defn check-disequalities
   [old-c new-c]
-  (reduce #(and %1 %2) (map #(check-diseq (substitution new-c) %) (disequalities old-c))))
+  (let [new-d (reduce 
+                #(if (not %2) (reduced false) (conj %1 %2)) 
+                [] 
+                (map #(check-diseq (substitution new-c) %) (disequalities old-c)))]
+    (if new-d
+      (constraint-store (substitution new-c) new-d)
+      false ; disequality constraints failed with this unification
+      )))
+
 
 (comment
   (check-disequalities
@@ -404,4 +411,6 @@
   (and (lvar? a)
        (lvar? b)
        (= (:lvarid a) (:lvarid b))))
+
+
 
