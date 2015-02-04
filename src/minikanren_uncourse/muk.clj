@@ -104,12 +104,14 @@
 (defn pair? [t]
   (and (vector? t) (= (count t) 2)))
 
+(defn pair [h t] [h t])
+
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any
   other constraints"
   [u v c]
   (let [new-c (assoc-in c [:substitution u] v)]
-    (check-disequalities c new-c))) ; TODO: is this an appropriate place to put this, or should I put it in unify?
+    (check-disequalities new-c))) ; TODO: is this an appropriate place to put this, or should I put it in unify?
 
 ; =====================================================================
 
@@ -168,14 +170,11 @@
         (= 2 (count de))
           (let [[k1 v1] (first de)
                 [k2 v2] (second de)]
-              (unify [k1 k2] [v1 v2] s))
+              (unify (pair k1 k2) (pair v1 v2) s))
         :else (throw (IllegalArgumentException. "Only supports disequalities with 1 or two terms")) ))
 
 (defn check-diseq
   [s de]
-  ; de = {{:lvarid 0} 6}
-  ; s1 = {{:lvarid 0} 5} -> succeeds
-  ; s2 = {{:lvarid 0} 6} -> fails
   (let [res (unify-diseq s de)]
     (cond 
       (= res false) de
@@ -184,15 +183,17 @@
 
 
 (defn check-disequalities
-  [old-c new-c]
+  [c]
   (let [new-d (reduce 
-                #(if (not %2) (reduced false) (conj %1 %2)) 
+                #(if (not %2) 
+                   (reduced false) ; as soon as any disequality constraint fails (maps to false), the whole thing fails
+                   (conj %1 %2)) ; otherwise add the (potentially) updated disequality constraint to the list
                 [] 
-                (map #(check-diseq (substitution new-c) %) (disequalities old-c)))]
+                ; check each disequality against the new substitution to make sure they aren't violated
+                (map #(check-diseq (substitution c) %) (disequalities c)))]
     (if new-d
-      (constraint-store (substitution new-c) new-d)
-      false ; disequality constraints failed with this unification
-      )))
+      (constraint-store (substitution c) new-d)
+      false ))) ; disequality constraints failed with this unification
 
 
 ; try to implement disequality in micro-kanren as described below

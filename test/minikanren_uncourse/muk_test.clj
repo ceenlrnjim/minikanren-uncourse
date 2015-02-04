@@ -24,11 +24,10 @@
   
 (deftest check-disequalities-test
   (is (check-disequalities
-    (constraint-store {} [{(lvar 0) 6}])
     (constraint-store {(lvar 0) 5} [{(lvar 0) 6}])))
   (is (not (check-disequalities
-    (constraint-store {} [{(lvar 0) 6}])
-    (constraint-store {(lvar 0) 6} [{(lvar 0) 6}])))))
+    (constraint-store {(lvar 0) 6} [{(lvar 0) 6}]))))
+  (is (check-disequalities (constraint-store {(lvar 2) 5} [{(lvar 0) (lvar 1) (lvar 2) 5}]))))
   
 (deftest diseq-test
   (is (= false (diseq 5 5 (constraint-store))))
@@ -36,3 +35,4 @@
   (is (diseq (lvar 0) 6 (constraint-store)))
   (is (not (diseq (lvar 0) 6 {:substitution {(lvar 0) 6} :disequalities []})))
   (is (= [{(lvar 2) 5 (lvar 0) (lvar 1)}] (:disequalities (diseq [(lvar 0) (lvar 2)] [(lvar 1) 5] (constraint-store))))))
+
