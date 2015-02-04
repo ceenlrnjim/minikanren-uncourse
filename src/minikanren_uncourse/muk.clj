@@ -1,4 +1,4 @@
-﻿; microKanren in clojure
+; microKanren in clojure
 ;
 ; based on 2013 scheme workshop paper by Jason Hemann and Dan Friedman
 ; github.com/jasonhemann/microKanren
@@ -213,8 +213,8 @@
         ; only those extentions added during this unification
         ; TODO: faster implementation?
       :else 
-        (add-diseq c ;(apply dissoc (substitution unify-result) (keys (substitution c)))
-                   ( additional-constraints c unify-result)))))
+        (add-diseq c 
+                   (additional-constraints c unify-result)))))
 
 ;   ------------------------------------------------------------------
 ;   Implementing disequality in terms of unify
