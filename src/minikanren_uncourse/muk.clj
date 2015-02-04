@@ -172,28 +172,50 @@
   [a b]
   (apply dissoc (substitution b) (keys (substitution a))))
 
+; TODO: can I only ever have disequality constraints that are either one term (directly) or two terms (pair comparison)?
+; I think so since these are the only things we can unify with logic variables
+; but note that any extension to unification/disequality constraints will need to be reflected here
+(defn unify-diseq
+  [s de]
+  (cond (= 1 (count de))
+          (let [[k v] (first de)]
+              (unify k v (constraint-store s)))
+        (= 2 (count de))
+          (let [[k1 v1] (first de)
+                [k2 v2] (second de)]
+              (unify [k1 k2] [v1 v2] s))
+        :else (throw (IllegalArgumentException. "Only supports disequalities with 1 or two terms")) ))
+
 (defn check-diseq
   [s de]
   ; de = {{:lvarid 0} 6}
   ; s1 = {{:lvarid 0} 5} -> succeeds
   ; s2 = {{:lvarid 0} 6} -> fails
-  (let [[k v] (first de) ; TODO: starting with simple, single condition constraint
-        res (unify k v (constraint-store s))]
+  (let [res (unify-diseq s de)]
     (cond 
       (= res false) true
       (= res (constraint-store s)) false
-      )
-    ))
+      :else (throw (UnsupportedOperationException. "TODO: modify d when unification adds new conditions")))))
 
 ; TODO: move all this stuff to tests
 (comment 
-  (check-diseq {{:lvarid 0} 5} {{:lvarid 0} 6})
-  (check-diseq {{:lvarid 0} 6} {{:lvarid 0} 6})
+  (check-diseq {(lvar 0) 5} {(lvar 0) 6})
+  (check-diseq {(lvar 0) 6} {(lvar 0) 6})
+  (check-diseq {(lvar 0) (lvar 1) (lvar 1) 5} {(lvar 0) 6})
+  (check-diseq {(lvar 0) (lvar 1) (lvar 1) 6} {(lvar 0) 6})
   )
 
 (defn check-disequalities
   [old-c new-c]
-  true
+  (reduce #(and %1 %2) (map #(check-diseq (substitution new-c) %) (disequalities old-c))))
+
+(comment
+  (check-disequalities
+    (constraint-store {} [{(lvar 0) 6}])
+    (constraint-store {(lvar 0) 5} [{(lvar 0) 6}]))
+  (check-disequalities
+    (constraint-store {} [{(lvar 0) 6}])
+    (constraint-store {(lvar 0) 6} [{(lvar 0) 6}]))
   )
 
 ; try to implement disequality in micro-kanren as described below
@@ -215,7 +237,7 @@
         ; TODO: faster implementation?
       :else 
         (add-diseq c ;(apply dissoc (substitution unify-result) (keys (substitution c)))
-                   additional-constraints c unify-result))))
+                   ( additional-constraints c unify-result)))))
 
 (comment
   (diseq 5 5 (constraint-store))
