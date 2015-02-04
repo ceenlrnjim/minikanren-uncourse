@@ -1,4 +1,4 @@
-; microKanren in clojure
+﻿; microKanren in clojure
 ;
 ; based on 2013 scheme workshop paper by Jason Hemann and Dan Friedman
 ; github.com/jasonhemann/microKanren
@@ -129,14 +129,6 @@
             t)) ; not found, return the term
       :else t))); if the term is not a variable just return the term
 
-(comment
-  (walk (lvar 0) (ext-s (lvar 0) 5 (constraint-store)))
-  (walk (lvar 0) (ext-s (lvar 1) (lvar 0) (constraint-store)))
-  (walk (lvar 1) (ext-s (lvar 1) (lvar 0) (constraint-store)))
-  (walk (lvar 1) (ext-s (lvar 1) (lvar 0) (ext-s (lvar 0) 5 (constraint-store))))
-)
-
-
 ; if unification succeeds, it returns a substitution (map) that would make the
 ; two terms equal
 ; this unifier only handles lvars, pairs, and things that are comparable with ==,
@@ -159,12 +151,6 @@
           (and c (unify (second u) (second v) c))) ; note - using and as an if statement
       :else (and (= u v) c)))) ; use host language equivalence to test if these values are the same
 
-(comment
-  (unify 5 5 (constraint-store))
-  (unify 5 6 (constraint-store))
-  (unify (lvar 0) 6 (constraint-store))
-  (unify (lvar 0) 6 (ext-s (lvar 0) 5 (constraint-store)))
-)
 
 (defn additional-constraints
   "returns any constraints that have been added in b that are not in a"
@@ -196,13 +182,6 @@
       (= res (constraint-store s)) false
       :else (throw (UnsupportedOperationException. "TODO: modify d when unification adds new conditions")))))
 
-; TODO: move all this stuff to tests
-(comment 
-  (check-diseq {(lvar 0) 5} {(lvar 0) 6})
-  (check-diseq {(lvar 0) 6} {(lvar 0) 6})
-  (check-diseq {(lvar 0) (lvar 1) (lvar 1) 5} {(lvar 0) 6})
-  (check-diseq {(lvar 0) (lvar 1) (lvar 1) 6} {(lvar 0) 6})
-  )
 
 (defn check-disequalities
   [old-c new-c]
@@ -215,15 +194,6 @@
       false ; disequality constraints failed with this unification
       )))
 
-
-(comment
-  (check-disequalities
-    (constraint-store {} [{(lvar 0) 6}])
-    (constraint-store {(lvar 0) 5} [{(lvar 0) 6}]))
-  (check-disequalities
-    (constraint-store {} [{(lvar 0) 6}])
-    (constraint-store {(lvar 0) 6} [{(lvar 0) 6}]))
-  )
 
 ; try to implement disequality in micro-kanren as described below
 (defn diseq
@@ -245,14 +215,6 @@
       :else 
         (add-diseq c ;(apply dissoc (substitution unify-result) (keys (substitution c)))
                    ( additional-constraints c unify-result)))))
-
-(comment
-  (diseq 5 5 (constraint-store))
-  (diseq 5 6 (constraint-store))
-  (diseq (lvar 0) 6 (constraint-store))
-  (diseq (lvar 0) 6 {:substitution {(lvar 0) 6} :disequalities []})
-  (diseq [(lvar 0) (lvar 2)] [(lvar 1) 5] (constraint-store))
-  )
 
 ;   ------------------------------------------------------------------
 ;   Implementing disequality in terms of unify
@@ -411,6 +373,3 @@
   (and (lvar? a)
        (lvar? b)
        (= (:lvarid a) (:lvarid b))))
-
-
-
