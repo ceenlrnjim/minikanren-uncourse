@@ -94,6 +94,9 @@
    {:substitution s
     :disequalities d }))
 
+(defn constraint-store? [c]
+  (and (map? c) (contains? c :substitution) (contains? c :disequalities)))
+
 (defn substitution [c] (:substitution c))
 (defn disequalities [c] (:disequalities c))
 (defn add-diseq [c diseq-constraint]
@@ -122,6 +125,7 @@
 (defn walk 
   "walk term t in substitution s"
   [t c]
+  {:pre [(constraint-store? c)]}
   (let [s (substitution c)]
     (cond
       (lvar? t) 
@@ -138,6 +142,7 @@
 ;   for an extensible unifier
 (defn unify 
   [u v c]
+  {:pre [(constraint-store? c)]}
   (let [u (walk u c) ; note shadowing
         v (walk v c)]
     (cond
@@ -154,36 +159,39 @@
       :else (and (= u v) c)))) ; use host language equivalence to test if these values are the same
 
 
-(defn additional-constraints
+(defn diff-substitutions
   "returns any constraints that have been added in b that are not in a"
   [a b]
+  {:pre [(constraint-store? a) (constraint-store? b)]}
   (apply dissoc (substitution b) (keys (substitution a))))
 
 ; TODO: can I only ever have disequality constraints that are either one term (directly) or two terms (pair comparison)?
 ; I think so since these are the only things we can unify with logic variables
 ; but note that any extension to unification/disequality constraints will need to be reflected here
-(defn unify-diseq
-  [s de]
-  (cond (= 1 (count de))
-          (let [[k v] (first de)]
-              (unify k v (constraint-store s)))
-        (= 2 (count de))
-          (let [[k1 v1] (first de)
-                [k2 v2] (second de)]
-              (unify (pair k1 k2) (pair v1 v2) s))
-        :else (throw (IllegalArgumentException. "Only supports disequalities with 1 or two terms")) ))
+(defn reconstitute-disequality
+  [constraint]
+  (condp = (count constraint) ; need to determine if this represents a unified pair, or a just a single logic variable
+    1 (first constraint) ; not a pair, just returning two results
+    2 (let [[k1 v1] (first constraint)
+            [k2 v2] (second constraint)]
+              [(pair k1 k2) (pair v1 v2)])
+    (throw (IllegalArgumentException. "Only supports disequalities with 1 or two terms"))))
 
 (defn check-diseq
+  "validate, and possibly modify, a single disequality constraint against the specified substitution"
   [s de]
-  (let [res (unify-diseq s de)]
+  (let [[u v] (reconstitute-disequality de)
+        res (unify u v (constraint-store s))]
     (cond 
       (= res false) de
       (= res (constraint-store s)) false
-      :else (additional-constraints (constraint-store s) res))))
+      :else (diff-substitutions (constraint-store s) res))))
 
 
 (defn check-disequalities
+  "Validate, and possibly modify, the disequalities in the constraint store based on the substitution"
   [c]
+  {:pre [(constraint-store? c)]}
   (let [new-d (reduce 
                 #(if (not %2) 
                    (reduced false) ; as soon as any disequality constraint fails (maps to false), the whole thing fails
@@ -199,6 +207,7 @@
 ; try to implement disequality in micro-kanren as described below
 (defn diseq
   [u v c]
+  {:pre [(constraint-store? c)]}
   (let [unify-result (unify u v c)]
     (cond 
         ; since unification fails, these two values cannot be equal, 
@@ -214,7 +223,7 @@
         ; only those extentions added during this unification
         ; TODO: faster implementation?
       :else 
-        (add-diseq c (additional-constraints c unify-result)))))
+        (add-diseq c (diff-substitutions c unify-result)))))
 
 ;   ------------------------------------------------------------------
 ;   Implementing disequality in terms of unify
