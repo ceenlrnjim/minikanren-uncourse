@@ -20,6 +20,7 @@
   (is (= false (check-diseq {(lvar 0) 6} {(lvar 0) 6})))
   (is (= {{:lvarid 0} 6} (check-diseq {(lvar 0) (lvar 1) (lvar 1) 5} {(lvar 0) 6})))
   (is (= false (check-diseq {(lvar 0) (lvar 1) (lvar 1) 6} {(lvar 0) 6})))
+  (is (= {(lvar 0) (lvar 1)}) (check-diseq {(lvar 2) 5} {(lvar 0) (lvar 1) (lvar 2) 5}))
   )
   
 (deftest check-disequalities-test

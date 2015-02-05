@@ -179,7 +179,7 @@
     (cond 
       (= res false) de
       (= res (constraint-store s)) false
-      :else (throw (UnsupportedOperationException. "TODO: modify d when unification adds new conditions")))))
+      :else (additional-constraints (constraint-store s) res))))
 
 
 (defn check-disequalities
@@ -214,8 +214,7 @@
         ; only those extentions added during this unification
         ; TODO: faster implementation?
       :else 
-        (add-diseq c 
-                   (additional-constraints c unify-result)))))
+        (add-diseq c (additional-constraints c unify-result)))))
 
 ;   ------------------------------------------------------------------
 ;   Implementing disequality in terms of unify
