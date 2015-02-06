@@ -475,7 +475,10 @@
 ;   different search strategies
 ; ================================================================
 (defn mplus
-  [s1 s1]
-  )
+  [s1 s2]
+  (cond
+    (empty? s1) s2 ; TODO: validate equivalent predicate
+    (fn? s1) (fn [] (mplus s2 (s1))) ; validate equivalent predicate
+    :else (cons (first s1) (mplus (rest s1) s2))))
 
 (defn bind [])
