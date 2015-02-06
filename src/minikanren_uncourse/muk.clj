@@ -438,15 +438,14 @@
   (== (lvar 0) 5)
   ; TODO: make sure that test validates that counter is preserved
   ((== (lvar 0) 5) (constraint-store {} [] 10))
-  )
+)
 
-;
 ; (call-fresh
 ;   (fn [x]
 ;     (== x 5)))
 ;
 (defn call-fresh 
-  "Using procedure application"
+  "goal constructor that creates a new logic variable and passes it to another goal constructor"
   [f]
   (fn [c] ; s/c in paper - 
     (let [ix (counter c)]
@@ -459,9 +458,15 @@
 (comment
   (call-fresh (fn [x] (== x 5)))
   ((call-fresh (fn [x] (== x 5))) (constraint-store))
-  )
+  ((call-fresh
+     (fn [x] 
+       (call-fresh 
+         (fn [y]
+           (== x y)))))
+   (constraint-store)))
 
 ; disj and conj basically manipulate multiple streams
+; pre-pendint the "mu" to prevent name collision with clojure's disj and conj
 (defn μdisj [g1 g2])
 
 (defn μconj [g1 g2])
