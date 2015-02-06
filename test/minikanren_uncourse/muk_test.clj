@@ -37,3 +37,9 @@
   (is (not (diseq (lvar 0) 6 {:substitution {(lvar 0) 6} :disequalities []})))
   (is (= [{(lvar 2) 5 (lvar 0) (lvar 1)}] (:disequalities (diseq [(lvar 0) (lvar 2)] [(lvar 1) 5] (constraint-store))))))
 
+;(deftest ==-test
+  ;(is )
+  ;)
+
+;(deftest call-fresh-test
+;)

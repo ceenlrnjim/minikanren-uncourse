@@ -3,7 +3,8 @@
 ; based on 2013 scheme workshop paper by Jason Hemann and Dan Friedman
 ; github.com/jasonhemann/microKanren
 
-(ns minikanren-uncourse.muk)
+(ns minikanren-uncourse.muk
+  (:refer-clojure :exclude [==]))
 
 ; minikanren uncourse #7 - 
 ;
@@ -84,25 +85,46 @@
 
 ; TODO: add pre-checks for argument types
 (defn constraint-store 
-  ( []
-    {:substitution {}
-     :disequalities [] })
+  ( [] (constraint-store {} [] 0))
   ([s]
    {:substitution s
-    :disequalities []})
+    :disequalities []
+    :counter 0 })
   ([s d]
    {:substitution s
-    :disequalities d }))
+    :disequalities d
+    :counter 0 })
+  ([s d c]
+   {:substitution s
+    :disequalities d
+    :counter c })
+  
+  )
 
 (defn constraint-store? [c]
   (and (map? c) (contains? c :substitution) (contains? c :disequalities)))
 
 (defn substitution [c] (:substitution c))
 (defn disequalities [c] (:disequalities c))
+(def counter :counter) ; another way to write the above
+
 (defn add-diseq [c diseq-constraint]
   (constraint-store
     (substitution c)
     (conj (disequalities c) diseq-constraint)))
+
+(defn set-substitution [c s]
+  {:pre [(constraint-store? c)]}
+  (assoc c :substitution s))
+
+(defn set-disequalities [c d]
+  {:pre [(constraint-store? c)]}
+  (assoc c :disequalities d))
+
+(defn increment-counter [c]
+  {:pre [(constraint-store? c)]}
+  (assoc c :counter (inc (:counter c))))
+
 
 (defn pair? [t]
   (and (vector? t) (= (count t) 2)))
@@ -114,6 +136,7 @@
   other constraints"
   [u v c]
   (let [new-c (assoc-in c [:substitution u] v)]
+    ; we can shut off disequality specific functionality by just returning new-c here
     (check-disequalities new-c))) ; TODO: is this an appropriate place to put this, or should I put it in unify?
 
 ; =====================================================================
@@ -200,7 +223,7 @@
                 ; check each disequality against the new substitution to make sure they aren't violated
                 (map #(check-diseq (substitution c) %) (disequalities c)))]
     (if new-d
-      (constraint-store (substitution c) new-d)
+      (set-disequalities c new-d)
       false ))) ; disequality constraints failed with this unification
 
 
@@ -382,3 +405,79 @@
   (and (lvar? a)
        (lvar? b)
        (= (:lvarid a) (:lvarid b))))
+
+; unify deals with substitutions or false
+; our logic programming deals with streams of answers, so failure is
+; represented as an empty list (instead of false)
+(def mzero []) 
+
+; constructs a stream with a single element - take our constraint into our
+; "stream of answers" monad
+(defn unit [c] [c])
+
+; this is a constructor function that returns a function
+; delaying unification - we don't know which substitution to unify
+; them in at the point the constraint is defined.
+; the s/c that is provided to the function that is returned is the
+; substitution to be used in unifying the arguments.
+; In some sense == is the interface between unify and the rest of minikanren
+(defn == 
+  "definition of the goal constructor for using unification"
+  [u v]
+  (fn [c] ; s/c in the paper - substitution and a counter
+    (let [c (unify u v c)]
+      (if c (unit c) mzero)))) ; if it succeeded, return the new constraint, otherwise fail
+
+;====================================================
+;* goal - takes an s/c and returns a stream of s/c
+;* goal constructor is a function that returns a goal
+;=====================================================
+
+; TODO: tests
+(comment
+  (== (lvar 0) 5)
+  ; TODO: make sure that test validates that counter is preserved
+  ((== (lvar 0) 5) (constraint-store {} [] 10))
+  )
+
+;
+; (call-fresh
+;   (fn [x]
+;     (== x 5)))
+;
+(defn call-fresh 
+  "Using procedure application"
+  [f]
+  (fn [c] ; s/c in paper - 
+    (let [ix (counter c)]
+      ; invoke f with a new variable (this is the fresh)
+      ; f returns a goal (see above)
+      ; then invoke that goal with the constraint-store after incrementing its counter
+      ((f (lvar ix)) (increment-counter c)))))
+
+; TODO: add tests
+(comment
+  (call-fresh (fn [x] (== x 5)))
+  ((call-fresh (fn [x] (== x 5))) (constraint-store))
+  )
+
+; disj and conj basically manipulate multiple streams
+(defn μdisj [g1 g2])
+
+(defn μconj [g1 g2])
+ 
+; mplus and bind are stream operators (defining monad operations for our stream of answers)
+; mplus is basically appending two streams together
+; bind is the usual mapcat
+;
+; ================================================================
+; **** mplus and bind control the search strategy used in minikanren
+; - depth first, interleaving breadth first, etc.
+; - miniKanren paper talks about these trade offs and how to get 
+;   different search strategies
+; ================================================================
+(defn mplus
+  [s1 s1]
+  )
+
+(defn bind [])
