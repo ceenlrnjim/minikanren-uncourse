@@ -433,13 +433,6 @@
 ;* goal constructor is a function that returns a goal
 ;=====================================================
 
-; TODO: tests
-(comment
-  (== (lvar 0) 5)
-  ; TODO: make sure that test validates that counter is preserved
-  ((== (lvar 0) 5) (constraint-store {} [] 10))
-)
-
 ; (call-fresh
 ;   (fn [x]
 ;     (== x 5)))

@@ -17,7 +17,6 @@
 
 (deftest test-eval-lambda
   (let [r (first (run 1 [out] (eval-expo `(λ (x) x) [[`y 42]] out)))]
-    (println r)
     (is (vector? r))
     (is (= 4 (count r)))
     (is (= :closure (first r)))))
