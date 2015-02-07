@@ -126,11 +126,6 @@
   (assoc c :counter (inc (:counter c))))
 
 
-(defn pair? [t]
-  (and (vector? t) (= (count t) 2)))
-
-(defn pair [h t] [h t])
-
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any
   other constraints"
@@ -158,6 +153,14 @@
             t)) ; not found, return the term
       :else t))); if the term is not a variable just return the term
 
+(defn unifiable-collection?
+  [s]
+  ; TODO: maps will conflict with lvars - generic seqs? 
+  ;(and (or (list? s) (vector? s))
+       ;(seq s))
+  (vector? s)
+  );  - need to make sure there are values left
+
 ; if unification succeeds, it returns a substitution (map) that would make the
 ; two terms equal
 ; this unifier only handles lvars, pairs, and things that are comparable with ==,
@@ -176,9 +179,10 @@
         (ext-s u v c) ; we're missing the occurs? check to make sure that you're not unifying a variable with a term that contains that same variable
       (lvar? v) ; we know that u is not a variable
         (ext-s v u c)
-      (and (pair? u) (pair? v)) ; pairwise unification on the cars and cdrs
+      ; TODO: not - want to support unifying
+      (and (unifiable-collection? u) (unifiable-collection? v)) ; pairwise unification on the cars and cdrs
         (let [c (unify (first u) (first v) c)]
-          (and c (unify (second u) (second v) c))) ; note - using and as an if statement
+          (and c (unify (rest u) (rest v) c))) ; note - using and as an if statement
       :else (and (= u v) c)))) ; use host language equivalence to test if these values are the same
 
 
@@ -197,7 +201,7 @@
     1 (first constraint) ; not a pair, just returning two results
     2 (let [[k1 v1] (first constraint)
             [k2 v2] (second constraint)]
-              [(pair k1 k2) (pair v1 v2)])
+              [[k1 k2] [v1 v2]])
     (throw (IllegalArgumentException. "Only supports disequalities with 1 or two terms"))))
 
 (defn check-diseq
@@ -428,6 +432,18 @@
     (let [c (unify u v c)]
       (if c (unit c) mzero)))) ; if it succeeded, return the new constraint, otherwise fail
 
+; 2 continuation-version of ==
+; Dale Vaillancourt and Mitch Wand paper - equivalence of streams and continuations
+; "relating models of backtracking" ICFP 2004
+;
+;(defn == 
+  ;"definition of the goal constructor for using unification"
+  ;[u v]
+  ;(fn [c sc fc] ; sc/fc success and failure continutations
+    ;(let [c (unify u v c)]
+      ;(if c (sc c fc) (fc))))) ; if it succeeded, return the new constraint, otherwise fail
+
+
 ;====================================================
 ;* goal - takes an s/c and returns a stream of s/c
 ;* goal constructor is a function that returns a goal
@@ -500,7 +516,6 @@
   (fn [c]
     (bind (g1 c) g2)))
  
-
 (comment
   ; TODO: tests
   (let [c1 (== (lvar 0) 1)
@@ -508,12 +523,13 @@
         c3 (== (lvar 1) 2)
         gd (μdisj c1 c2)
         gc (μconj c1 c2)
-        gc2 (μconj c2 c3)
-        ]
+        gc2 (μconj c2 c3) ]
 
-    (gd (constraint-store))
-    (gc (constraint-store))
-    (gc2 (constraint-store))
+    (println (gd (constraint-store)))
+    (println (gc (constraint-store)))
+    (println (gc2 (constraint-store)))
     )
+
+  ((call-fresh (fn [x] (== x [x]))) (constraint-store))
   )
 
