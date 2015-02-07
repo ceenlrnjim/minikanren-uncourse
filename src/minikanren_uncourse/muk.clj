@@ -458,16 +458,6 @@
            (== x y)))))
    (constraint-store)))
 
-; disj and conj basically manipulate multiple streams
-; pre-pendint the "mu" to prevent name collision with clojure's disj and conj
-(defn μdisj [g1 g2]
-  (fn [c]
-    (mplus (g1 c) (g2 c))))
-
-(defn μconj [g1 g2]
-  (fn [c]
-    (bind (g1 c) g2)))
- 
 ; mplus and bind are stream operators (defining monad operations for our stream of answers)
 ; mplus is basically appending two streams together
 ; bind is the usual mapcat
@@ -478,6 +468,16 @@
 ; - miniKanren paper talks about these trade offs and how to get 
 ;   different search strategies
 ; ================================================================
+(declare mplus)
+
+(defn bind 
+  "flatmap/mapcat the goal g over the stream s"
+  [s g]
+  (cond
+    (empty? s) mzero
+    (fn? s) (fn [] (bind (s) g)) ; handle lazy streams - could I make use of clojure's lazy seqs here?
+    :else (mplus (g (first s)) (bind (rest s) g))))
+
 (defn mplus
   [s1 s2]
   (cond
@@ -490,11 +490,30 @@
   (mplus (unit (constraint-store)) ((call-fresh (fn [x] (== x 5))) (constraint-store)))
   )
 
-(defn bind 
-  "flatmap/mapcat the goal g over the stream s"
-  [s g]
-  (cond
-    (empty? s) mzero
-    (fn? s) (fn [] (bind (s) g)) ; handle lazy streams - could I make use of clojure's lazy seqs here?
-    :else (mplus (g (first s)) (bind (rest s) g))))
+; disj and conj basically manipulate multiple streams
+; pre-pendint the "mu" to prevent name collision with clojure's disj and conj
+(defn μdisj [g1 g2]
+  (fn [c]
+    (mplus (g1 c) (g2 c))))
+
+(defn μconj [g1 g2]
+  (fn [c]
+    (bind (g1 c) g2)))
+ 
+
+(comment
+  ; TODO: tests
+  (let [c1 (== (lvar 0) 1)
+        c2 (== (lvar 0) 2)
+        c3 (== (lvar 1) 2)
+        gd (μdisj c1 c2)
+        gc (μconj c1 c2)
+        gc2 (μconj c2 c3)
+        ]
+
+    (gd (constraint-store))
+    (gc (constraint-store))
+    (gc2 (constraint-store))
+    )
+  )
 
