@@ -497,7 +497,13 @@
 ; - miniKanren paper talks about these trade offs and how to get 
 ;   different search strategies
 ; ================================================================
-(declare mplus)
+(defn mplus
+  [s1 s2]
+  (cond
+    (fn? s1) (fn [] (mplus s2 (s1))) ; handle lazy streams to support infinite streams
+                                     ; note swapping s2 and s1 -> this gives an interleaving, breadth first search
+    (empty? s1) s2 ; empty? will fail on a function, so this check must come second
+    :else (cons (first s1) (mplus (rest s1) s2))))
 
 (defn bind 
   "flatmap/mapcat the goal g over the stream s"
@@ -507,16 +513,13 @@
     (empty? s) mzero
     :else (mplus (g (first s)) (bind (rest s) g))))
 
-(defn mplus
-  [s1 s2]
-  (cond
-    (fn? s1) (fn [] (mplus s2 (s1))) ; handle lazy streams to support infinite streams
-                                     ; note swapping s2 and s1 -> this gives an interleaving, breadth first search
-    (empty? s1) s2 ; empty? will fail on a function, so this check must come second
-    :else (cons (first s1) (mplus (rest s1) s2))))
+
 
 ; disj and conj basically manipulate multiple streams
 ; pre-pending the "mu" to prevent name collision with clojure's disj and conj
+; we don't change the definition of conj/disj,
+; if we want to change the way the search works, we change the definition of
+; our stream monad in mplus and bind
 (defn μdisj [g1 g2]
   "goal constructor whose goal will succeed if either supplied goal succeeds"
   (fn [c]
