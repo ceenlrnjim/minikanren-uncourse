@@ -61,5 +61,12 @@
               (fn [y]
                 (== x y)))))
         (constraint-store))
-       (unit (unify (lvar 0) (lvar 1) (increment-counter (increment-counter (constraint-store)))))))
-)
+       (unit (unify (lvar 0) (lvar 1) (increment-counter (increment-counter (constraint-store))))))))
+
+(deftest mplus-test
+  (is (= (mplus mzero [:a :b :c]) [:a :b :c]))
+  ; test append
+  (is (= (mplus [:a :b :c] [:d :e :f]) [:a :b :c :d :e :f]))
+  ; test "lazy" stream
+  (is (= ((mplus (fn [] [:a :b]) [:c :d])) [:c :d :a :b]))
+  )
