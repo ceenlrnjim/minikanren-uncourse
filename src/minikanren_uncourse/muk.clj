@@ -498,7 +498,7 @@
 ;   different search strategies
 ; ================================================================
 (defn mplus
-  [s1 s2]
+  [s1 s2] ; two stream monads
   (cond
     (fn? s1) (fn [] (mplus s2 (s1))) ; handle lazy streams to support infinite streams
                                      ; note swapping s2 and s1 -> this gives an interleaving, breadth first search
@@ -507,7 +507,7 @@
 
 (defn bind 
   "flatmap/mapcat the goal g over the stream s"
-  [s g]
+  [s g] ; stream and a goal
   (cond
     (fn? s) (fn [] (bind (s) g)) ; handle lazy streams - could I make use of clojure's lazy seqs here?
     (empty? s) mzero
