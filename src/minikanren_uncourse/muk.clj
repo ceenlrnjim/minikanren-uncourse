@@ -438,6 +438,21 @@
     (let [c (unify u v c)]
       (if c (unit c) mzero)))) ; if it succeeded, return the new constraint, otherwise fail
 
+(defn != 
+  "goal constructor for disequality constriants"
+  [u v]
+  (fn [c]
+    (let [c (diseq u v c)]
+      (if c (unit c) mzero))))
+
+(comment
+  ((call-fresh
+     (fn [x]
+       (!= 6 x)
+       )
+     ) (constraint-store))
+  )
+
 ; 2 continuation-version of ==
 ; Dale Vaillancourt and Mitch Wand paper - equivalence of streams and continuations
 ; "relating models of backtracking" ICFP 2004
