@@ -445,14 +445,6 @@
     (let [c (diseq u v c)]
       (if c (unit c) mzero))))
 
-(comment
-  ((call-fresh
-     (fn [x]
-       (!= 6 x)
-       )
-     ) (constraint-store))
-  )
-
 ; 2 continuation-version of ==
 ; Dale Vaillancourt and Mitch Wand paper - equivalence of streams and continuations
 ; "relating models of backtracking" ICFP 2004
@@ -523,17 +515,15 @@
     (empty? s1) s2 ; empty? will fail on a function, so this check must come second
     :else (cons (first s1) (mplus (rest s1) s2))))
 
-(comment
-  (mplus (unit (constraint-store)) ((call-fresh (fn [x] (== x 5))) (constraint-store)))
-  )
-
 ; disj and conj basically manipulate multiple streams
-; pre-pendint the "mu" to prevent name collision with clojure's disj and conj
+; pre-pending the "mu" to prevent name collision with clojure's disj and conj
 (defn μdisj [g1 g2]
+  "goal constructor whose goal will succeed if either supplied goal succeeds"
   (fn [c]
     (mplus (g1 c) (g2 c))))
 
 (defn μconj [g1 g2]
+  "goal constructor whose goal will succeed if both goals succeed"
   (fn [c]
     (bind (g1 c) g2)))
  

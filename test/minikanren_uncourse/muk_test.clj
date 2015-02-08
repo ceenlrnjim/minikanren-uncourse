@@ -70,3 +70,36 @@
   ; test "lazy" stream
   (is (= ((mplus (fn [] [:a :b]) [:c :d])) [:c :d :a :b]))
   )
+
+(deftest bind-test
+  (let [g (== (lvar 1) (lvar 0))
+        c1 (unify (lvar 0) 5 (constraint-store))
+        c2 (unify (lvar 2) 6 (constraint-store))
+        res (bind (mplus (unit c1) (unit c2)) g)]
+    (is (= 5 (walk (lvar 0) (first res))))
+    (is (= 5 (walk (lvar 1) (first res))))
+    (is (= (lvar 0) (walk (lvar 1) (second res))))
+    (is (= 6 (walk (lvar 2) (second res))))))
+
+(deftest !=-test
+  (is (empty? ((!= 1 1) (constraint-store))))
+  (is (= 1 (count ((!= (lvar 0) 5) (constraint-store))))))
+
+(deftest μdisj-test
+  (let [g1 (== (lvar 0) 5)
+        g2 (== 5 6)
+        res1 ((μdisj g1 g2) (constraint-store))
+        res2 ((μdisj g2 g1) (constraint-store))]
+    (is (= 1 (count res1)))
+    (is (= 1 (count res2)))
+    (is (empty? ((μdisj g2 g2) (constraint-store))))))
+
+
+(deftest μconj-test
+  (let [g1 (== (lvar 0) 5)
+        g2 (== 5 6)
+        res1 ((μconj g1 g2) (constraint-store))
+        res2 ((μconj g2 g1) (constraint-store))]
+    (is (empty? res1))
+    (is (empty? res2))
+    (is (= 1 (count ((μconj g1 g1) (constraint-store)))))))
