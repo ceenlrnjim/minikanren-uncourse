@@ -155,11 +155,9 @@
 
 (defn unifiable-collection?
   [s]
-  ; TODO: maps will conflict with lvars - generic seqs? 
-  ;(and (or (list? s) (vector? s))
-       ;(seq s))
-  (vector? s)
-  );  - need to make sure there are values left
+  (or (seq? s) (list? s) (vector? s)) ; TODO: worry about strings
+  )
+
 
 ; if unification succeeds, it returns a substitution (map) that would make the
 ; two terms equal
@@ -180,10 +178,18 @@
       (lvar? v) ; we know that u is not a variable
         (ext-s v u c)
       ; TODO: not - want to support unifying
+      ;(and (pair? u) (pair? v)) ; pairwise unification on the cars and cdrs
       (and (unifiable-collection? u) (unifiable-collection? v)) ; pairwise unification on the cars and cdrs
         (let [c (unify (first u) (first v) c)]
-          (and c (unify (rest u) (rest v) c))) ; note - using and as an if statement
-      :else (and (= u v) c)))) ; use host language equivalence to test if these values are the same
+          (and c (unify (next u) (next v) c))) ; note - using and as an if statement
+      :else 
+      (and (= u v) c)))) ; use host language equivalence to test if these values are the same
+
+(comment
+  (unify [(lvar 0) (lvar 1)] [5 6] (constraint-store))
+  (unify [(lvar 0)] [5] (constraint-store))
+  (unify (list (lvar 1)) (list 6) (unify [(lvar 0)] [5] (constraint-store)))
+  )
 
 
 (defn diff-substitutions
@@ -497,7 +503,7 @@
 (defn mplus
   [s1 s2]
   (cond
-    (empty? s1) s2 ; TODO: validate equivalent predicate
+    (empty? s1) s2
     (fn? s1) (fn [] (mplus s2 (s1))) ; handle lazy streams to support infinite streams
                                      ; note swapping s2 and s1 -> this gives an interleaving, breadth first search
     :else (cons (first s1) (mplus (rest s1) s2))))

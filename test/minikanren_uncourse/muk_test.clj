@@ -14,7 +14,11 @@
   (is (= (constraint-store) (unify 5 5 (constraint-store))))
   (is (= false (unify 5 6 (constraint-store))))
   (is (= (constraint-store {(lvar 0) 6}) (unify (lvar 0) 6 (constraint-store))))
-  (is (= false (unify (lvar 0) 6 (ext-s (lvar 0) 5 (constraint-store))))))
+  (is (= false (unify (lvar 0) 6 (ext-s (lvar 0) 5 (constraint-store)))))
+  (let [c (unify [(lvar 0) (lvar 1) (lvar 2)] [0 1 2] (constraint-store))]
+    (is (= 0 (walk (lvar 0) c)))
+    (is (= 1 (walk (lvar 1) c)))
+    (is (= 2 (walk (lvar 2) c)))))
   
 (deftest check-diseq-test
   (is (= {{:lvarid 0} 6} (check-diseq {(lvar 0) 5} {(lvar 0) 6})))
