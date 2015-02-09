@@ -83,7 +83,6 @@
 (declare check-disequalities)
 
 
-; TODO: add pre-checks for argument types
 (defn constraint-store 
   ( [] (constraint-store {} [] 0))
   ([s]
@@ -132,7 +131,7 @@
   [u v c]
   (let [new-c (assoc-in c [:substitution u] v)]
     ; we can shut off disequality specific functionality by just returning new-c here
-    (check-disequalities new-c))) ; TODO: is this an appropriate place to put this, or should I put it in unify?
+    (check-disequalities new-c)))
 
 ; =====================================================================
 
@@ -155,7 +154,7 @@
 
 (defn unifiable-collection?
   [s]
-  (or (seq? s) (list? s) (vector? s)) ; TODO: worry about strings
+  (or (seq? s) (list? s) (vector? s)) ; TODO: worry about strings?
   )
 
 
@@ -177,8 +176,6 @@
         (ext-s u v c) ; we're missing the occurs? check to make sure that you're not unifying a variable with a term that contains that same variable
       (lvar? v) ; we know that u is not a variable
         (ext-s v u c)
-      ; TODO: not - want to support unifying
-      ;(and (pair? u) (pair? v)) ; pairwise unification on the cars and cdrs
       (and (unifiable-collection? u) (unifiable-collection? v)) ; pairwise unification on the cars and cdrs
         (let [c (unify (first u) (first v) c)]
           (and c (unify (next u) (next v) c))) ; note - using and as an if statement
@@ -497,13 +494,28 @@
 ; - miniKanren paper talks about these trade offs and how to get 
 ;   different search strategies
 ; ================================================================
+; Stream:
+;   ()              mature / empty stream
+;   (s/c . stream)  mature stream
+;   procedure       immature stream (λ () body) i.e. thunk
+;                     - this delays evaluation of the body and introduces laziness
+
+; can't cons onto a procedure
+(defn cons-stream
+  "handles cons-ing onto a stream which may be either a seq or a procedure"
+  [h t]
+  (cond 
+    (fn? t) (list h t)
+    :else (cons h t)))
+
 (defn mplus
   [s1 s2] ; two stream monads
   (cond
     (fn? s1) (fn [] (mplus s2 (s1))) ; handle lazy streams to support infinite streams
                                      ; note swapping s2 and s1 -> this gives an interleaving, breadth first search
     (empty? s1) s2 ; empty? will fail on a function, so this check must come second
-    :else (cons (first s1) (mplus (rest s1) s2))))
+    ; cons requires second argument to be a stream, which won't be true if it is a thunk
+    :else (cons-stream (first s1) (mplus (rest s1) s2))))
 
 (defn bind 
   "flatmap/mapcat the goal g over the stream s"
@@ -513,7 +525,17 @@
     (empty? s) mzero
     :else (mplus (g (first s)) (bind (rest s) g))))
 
+(defn pull
+  "take the next member of a stream, either mature or immature"
+  [s]
+  (if (fn? s) (pull (s)) s)) ; TODO: because I don't have scheme pairs, my "cdr" is not the procedure, but a list that contains the procedure
 
+(defn stream-take-all
+  "take all members from a stream, reifying immature streams"
+  [s]
+  (let [s (pull s)]
+    (if (empty? s) mzero
+      (cons (first s) (stream-take-all (rest s))))))
 
 ; disj and conj basically manipulate multiple streams
 ; pre-pending the "mu" to prevent name collision with clojure's disj and conj
@@ -547,3 +569,19 @@
   ((call-fresh (fn [x] (== x [x]))) (constraint-store))
   )
 
+
+; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
+; inverse-eta delay
+;   ex: (add1 5) => 6
+;   add1 is equivalent to (fn [n] (add1 n))
+;   add1 -> (fn [n] (add1 n)) is an "inverse-eta" expansion
+;   (fn [n] (add1 n)) -> add1 is an "eta" reduction (there are some restrictions)
+;
+(defn fives [x]
+  (μdisj
+    (== x 5)
+    (fn [c]
+      (fn []
+        ((fives x) c)))))
+
+;((call-fresh fives) (constraint-store))
