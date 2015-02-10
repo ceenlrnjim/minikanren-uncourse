@@ -68,9 +68,7 @@
   ; test append
   (is (= (mplus [:a :b :c] [:d :e :f]) [:a :b :c :d :e :f]))
   ; test "lazy" stream 
-  (is (= ((mplus (fn [] [:a :b]) [:c :d])) [:c :d :a :b]))
-  ; test a stream that contains a lazy stream
-  (is (= ((stream-take-all (mplus [:c :d] (fn [] [:a :b])))) [:a :b :c :d]))
+  (is (= (mplus (lazy-seq [:a :b]) [:c :d]) [:a :b :c :d]))
   )
 
 (deftest bind-test

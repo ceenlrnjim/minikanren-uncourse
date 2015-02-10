@@ -500,42 +500,20 @@
 ;   procedure       immature stream (λ () body) i.e. thunk
 ;                     - this delays evaluation of the body and introduces laziness
 
-; can't cons onto a procedure
-(defn cons-stream
-  "handles cons-ing onto a stream which may be either a seq or a procedure"
-  [h t]
-  (cond 
-    (fn? t) (list h t)
-    :else (cons h t)))
+; 
+; since clojure doesn't support improper tails in cons cells, we require a little
+; finagling to make this work - using clojure's lazy sequences instead
 
 (defn mplus
   [s1 s2] ; two stream monads
-  (cond
-    (fn? s1) (fn [] (mplus s2 (s1))) ; handle lazy streams to support infinite streams
-                                     ; note swapping s2 and s1 -> this gives an interleaving, breadth first search
-    (empty? s1) s2 ; empty? will fail on a function, so this check must come second
-    ; cons requires second argument to be a stream, which won't be true if it is a thunk
-    :else (cons-stream (first s1) (mplus (rest s1) s2))))
+  (lazy-cat s1 s2))
 
 (defn bind 
   "flatmap/mapcat the goal g over the stream s"
   [s g] ; stream and a goal
   (cond
-    (fn? s) (fn [] (bind (s) g)) ; handle lazy streams - could I make use of clojure's lazy seqs here?
     (empty? s) mzero
-    :else (mplus (g (first s)) (bind (rest s) g))))
-
-(defn pull
-  "take the next member of a stream, either mature or immature"
-  [s]
-  (if (fn? s) (pull (s)) s)) ; TODO: because I don't have scheme pairs, my "cdr" is not the procedure, but a list that contains the procedure
-
-(defn stream-take-all
-  "take all members from a stream, reifying immature streams"
-  [s]
-  (let [s (pull s)]
-    (if (empty? s) mzero
-      (cons (first s) (stream-take-all (rest s))))))
+    :else (mplus (g (first s)) (bind (drop 1 s) g))))
 
 ; disj and conj basically manipulate multiple streams
 ; pre-pending the "mu" to prevent name collision with clojure's disj and conj
@@ -577,11 +555,12 @@
 ;   add1 -> (fn [n] (add1 n)) is an "inverse-eta" expansion
 ;   (fn [n] (add1 n)) -> add1 is an "eta" reduction (there are some restrictions)
 ;
-(defn fives [x]
-  (μdisj
-    (== x 5)
-    (fn [c]
-      (fn []
-        ((fives x) c)))))
+(comment
+  (defn fives [x] ; goal constructor
+    (μdisj ; goal constructor takes two goals
+      (== x 5) ; goal constructor
+      (fn [c] ; goal - returns a lazy sequence of solutions
+        (lazy-seq ((fives x) c)))))
 
-;((call-fresh fives) (constraint-store))
+  (take 5 ((call-fresh fives) (constraint-store)))
+  )
