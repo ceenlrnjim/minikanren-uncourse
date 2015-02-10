@@ -561,9 +561,16 @@
 (comment
   (defn fives [x] ; goal constructor
     (μdisj ; goal constructor takes two goals
-      (== x 5) ; goal constructor
+      ; TODO: in this configuration, the lazy-cat result causes "takes" to only come from the first part of this sequence
+      ; with interleave, or switching the order, the take causes the lazy-seq to be realized and go into an infinite loop
+      ; is there a way to fix this with lazy-seqs, or do I need a more elaborate stream representation?
+      (fn [c] 
+        (println "executing == goal")
+        ((== x 5) c))
       (fn [c] ; goal - returns a lazy sequence of solutions
-        (lazy-seq ((fives x) c)))))
+        (println "executing recursive goal")
+        (lazy-seq ((fives x) c)))
+      ))
 
   (defn sixes [x] ; goal constructor
     (μdisj ; goal constructor takes two goals
@@ -575,7 +582,7 @@
     [x]
     (μdisj (fives x) (sixes x)))
 
-  (take 2 ((call-fresh fives) (constraint-store)))
+  (take 5 ((call-fresh fives) (constraint-store)))
   (take 2 ((call-fresh sixes) (constraint-store)))
   (take 2 ((call-fresh fives-and-sixes) (constraint-store)))
   )
