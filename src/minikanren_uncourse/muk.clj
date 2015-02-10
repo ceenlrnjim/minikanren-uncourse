@@ -506,7 +506,10 @@
 
 (defn mplus
   [s1 s2] ; two stream monads
-  (lazy-cat s1 s2))
+  ; TODO: we have lost our interleaving - now it is depth first
+  (lazy-cat s1 s2)
+  ;(interleave s1 s2)
+  )
 
 (defn bind 
   "flatmap/mapcat the goal g over the stream s"
@@ -562,5 +565,17 @@
       (fn [c] ; goal - returns a lazy sequence of solutions
         (lazy-seq ((fives x) c)))))
 
-  (take 5 ((call-fresh fives) (constraint-store)))
+  (defn sixes [x] ; goal constructor
+    (μdisj ; goal constructor takes two goals
+      (== x 6) ; goal constructor
+      (fn [c] ; goal - returns a lazy sequence of solutions
+        (lazy-seq ((sixes x) c)))))
+
+  (defn fives-and-sixes
+    [x]
+    (μdisj (fives x) (sixes x)))
+
+  (take 2 ((call-fresh fives) (constraint-store)))
+  (take 2 ((call-fresh sixes) (constraint-store)))
+  (take 2 ((call-fresh fives-and-sixes) (constraint-store)))
   )
