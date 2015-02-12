@@ -502,7 +502,7 @@
 
 ; 
 ; since clojure doesn't support improper tails in cons cells, we require a little
-; finagling to make this work - using clojure's lazy sequences instead
+; finagling to make this work 
 
 (defn cons-stream [h t]
   (if (fn? t) (cons h [t]) (cons h t)))
