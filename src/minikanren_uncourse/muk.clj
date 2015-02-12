@@ -550,23 +550,14 @@
   (fn [c]
     (bind (g1 c) g2)))
  
-(comment
-  ; TODO: tests
-  (let [c1 (== (lvar 0) 1)
-        c2 (== (lvar 0) 2)
-        c3 (== (lvar 1) 2)
-        gd (μdisj c1 c2)
-        gc (μconj c1 c2)
-        gc2 (μconj c2 c3) ]
+(defn pull [s]
+  (if (fn? s) (pull (s)) s))
 
-    (println (gd (constraint-store)))
-    (println (gc (constraint-store)))
-    (println (gc2 (constraint-store)))
-    )
-
-  ((call-fresh (fn [x] (== x [x]))) (constraint-store))
-  )
-
+(defn take-n [n s]
+  (if (zero? n) mzero
+    (let [s (pull s)]
+      (if (nil-stream? s) mzero
+        (cons-stream (car-stream s) (take-n (dec n) (cdr-stream s)))))))
 
 ; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
 ; inverse-eta delay
@@ -575,31 +566,30 @@
 ;   add1 -> (fn [n] (add1 n)) is an "inverse-eta" expansion
 ;   (fn [n] (add1 n)) -> add1 is an "eta" reduction (there are some restrictions)
 ;
+;
+
 (comment
+
   (defn fives [x] ; goal constructor
     (μdisj ; goal constructor takes two goals
-      ; TODO: in this configuration, the lazy-cat result causes "takes" to only come from the first part of this sequence
-      ; with interleave, or switching the order, the take causes the lazy-seq to be realized and go into an infinite loop
-      ; is there a way to fix this with lazy-seqs, or do I need a more elaborate stream representation?
-      (fn [c] 
-        (println "executing == goal")
-        ((== x 5) c))
+      (== x 5)
       (fn [c] ; goal - returns a lazy sequence of solutions
-        (println "executing recursive goal")
-        (lazy-seq ((fives x) c)))
-      ))
+        (fn [] ((fives x) c)))))
 
   (defn sixes [x] ; goal constructor
     (μdisj ; goal constructor takes two goals
-      (== x 6) ; goal constructor
+      (== x 6)
       (fn [c] ; goal - returns a lazy sequence of solutions
-        (lazy-seq ((sixes x) c)))))
+        (fn [] ((sixes x) c)))))
 
   (defn fives-and-sixes
     [x]
     (μdisj (fives x) (sixes x)))
 
-  ((call-fresh fives) (constraint-store))
-  ((call-fresh sixes) (constraint-store))
-  ((call-fresh fives-and-sixes) (constraint-store))
+  (take-n 3 ((call-fresh fives) (constraint-store)))
+  (take-n 3 ((call-fresh sixes) (constraint-store)))
+  (take-n 4 ((call-fresh fives-and-sixes) (constraint-store)))
   )
+
+
+
