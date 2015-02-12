@@ -65,10 +65,10 @@
 
 (deftest mplus-test
   (is (= (mplus mzero [:a :b :c]) [:a :b :c]))
+  (is (= (mplus [:a :b :c] mzero) [:a :b :c]))
   ; test append
   (is (= (mplus [:a :b :c] [:d :e :f]) [:a :b :c :d :e :f]))
   ; test "lazy" stream 
-  (is (= (mplus (lazy-seq [:a :b]) [:c :d]) [:a :b :c :d]))
   )
 
 (deftest bind-test

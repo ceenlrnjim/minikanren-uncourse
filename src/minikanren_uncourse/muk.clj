@@ -504,19 +504,36 @@
 ; since clojure doesn't support improper tails in cons cells, we require a little
 ; finagling to make this work - using clojure's lazy sequences instead
 
+(defn cons-stream [h t]
+  (cons h t)
+  )
+
+(defn car-stream [s]
+  (first s)
+  )
+
+(defn cdr-stream [s]
+  (drop 1 s)
+  )
+
+(defn nil-stream? [s]
+  (empty? s)
+  )
+
 (defn mplus
   [s1 s2] ; two stream monads
-  ; TODO: we have lost our interleaving - now it is depth first
-  (lazy-cat s1 s2)
-  ;(interleave s1 s2)
-  )
+  (cond
+    (nil-stream? s1) s2
+    (fn? s1) (fn [] (mplus s2 (s1)))
+    :else (cons-stream (car-stream s1) (mplus (cdr-stream s1) s2))))
 
 (defn bind 
   "flatmap/mapcat the goal g over the stream s"
   [s g] ; stream and a goal
   (cond
-    (empty? s) mzero
-    :else (mplus (g (first s)) (bind (drop 1 s) g))))
+    (nil-stream? s) mzero
+    (fn? s) (fn [] (bind (s) g))
+    :else (mplus (g (car-stream s)) (bind (cdr-stream s) g))))
 
 ; disj and conj basically manipulate multiple streams
 ; pre-pending the "mu" to prevent name collision with clojure's disj and conj
@@ -582,7 +599,7 @@
     [x]
     (μdisj (fives x) (sixes x)))
 
-  (take 5 ((call-fresh fives) (constraint-store)))
-  (take 2 ((call-fresh sixes) (constraint-store)))
-  (take 2 ((call-fresh fives-and-sixes) (constraint-store)))
+  ((call-fresh fives) (constraint-store))
+  ((call-fresh sixes) (constraint-store))
+  ((call-fresh fives-and-sixes) (constraint-store))
   )
