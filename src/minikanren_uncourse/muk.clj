@@ -505,20 +505,20 @@
 ; finagling to make this work - using clojure's lazy sequences instead
 
 (defn cons-stream [h t]
-  (cons h t)
-  )
+  (if (fn? t) (cons h [t]) (cons h t)))
 
 (defn car-stream [s]
-  (first s)
-  )
+  (first s))
 
 (defn cdr-stream [s]
-  (drop 1 s)
-  )
+  (let [res (rest s)]
+    (if (and (= (count res) 1) 
+             (fn? (first res)))
+      (first res)
+      res)))
 
 (defn nil-stream? [s]
-  (empty? s)
-  )
+  (and (not (fn? s)) (empty? s)))
 
 (defn mplus
   [s1 s2] ; two stream monads

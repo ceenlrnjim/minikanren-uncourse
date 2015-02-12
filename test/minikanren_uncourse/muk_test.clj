@@ -64,12 +64,19 @@
        (unit (unify (lvar 0) (lvar 1) (increment-counter (increment-counter (constraint-store))))))))
 
 (deftest mplus-test
+  (is (= (mplus mzero mzero) mzero))
   (is (= (mplus mzero [:a :b :c]) [:a :b :c]))
   (is (= (mplus [:a :b :c] mzero) [:a :b :c]))
   ; test append
   (is (= (mplus [:a :b :c] [:d :e :f]) [:a :b :c :d :e :f]))
-  ; test "lazy" stream 
-  )
+  ; fn then list
+  (let [s (mplus (fn [] [:a :b :c]) [:d :e :f])]
+    (is (fn? s))
+    (is (= (s) [:d :e :f :a :b :c])))
+  (let [s (mplus [:d :e :f] (fn [] [:a :b :c]))]
+    (is (= (take 3 s) [:d :e :f]))
+    (is (fn? (last s)))
+    (is (fn? (cdr-stream (drop 2 s))))))
 
 (deftest bind-test
   (let [g (== (lvar 1) (lvar 0))
