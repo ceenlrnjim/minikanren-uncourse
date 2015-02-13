@@ -559,6 +559,48 @@
       (if (nil-stream? s) mzero
         (cons-stream (car-stream s) (take-n (dec n) (cdr-stream s)))))))
 
+; inverse eta-delay macro
+(defmacro zzz [g]
+  `(fn [c#] (fn [] (~g c#))))
+
+
+(defmacro μdisj+ [& goals]
+  (cond 
+    (= (count goals) 1) (first goals)
+    (= (count goals) 2) `(μdisj ~(first goals) ~(second goals))
+    :else `(μdisj ~(first goals) (μdisj+ ~@(rest goals)))))
+
+(defmacro μconj+ [& goals]
+  (cond 
+    (= (count goals) 1) (first goals)
+    (= (count goals) 2) `(μconj ~(first goals) ~(second goals))
+    :else `(μconj ~(first goals) (μconj+ ~@(rest goals)))))
+
+(comment
+   ((call-fresh (fn [x]
+                 (μdisj+
+                   (== x 5)
+                   (== x 6)
+                   (== x 7))
+                 )) (constraint-store))
+
+   ((call-fresh (fn [x]
+                 (μconj+
+                   (!= x 5)
+                   (!= x 6)
+                   (!= x 7))
+                 )) (constraint-store))
+
+(macroexpand
+  '(μdisj+
+     (== x 5)
+     (== x 6)
+     (== x 7)))
+ 
+  )
+  
+   
+
 ; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
 ; inverse-eta delay
 ;   ex: (add1 5) => 6
@@ -573,6 +615,13 @@
       (== x 5)
       (fn [c] ; goal - returns a lazy sequence of solutions
         (fn [] ((fives x) c)))))
+
+  (defn fives [x]
+    (μdisj
+      (== x 5)
+      (zzz (fives x))
+      )
+    )
 
   (defn sixes [x] ; goal constructor
     (μdisj ; goal constructor takes two goals
@@ -603,7 +652,6 @@
   (take-n 3 ((call-fresh sixes) (constraint-store)))
   (doseq [i (take-n 10 ((call-fresh fives-and-sixes) (constraint-store)))]
     (println i))
-  
 )
 
 
