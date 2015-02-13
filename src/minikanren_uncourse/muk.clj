@@ -565,8 +565,6 @@
 ;   add1 is equivalent to (fn [n] (add1 n))
 ;   add1 -> (fn [n] (add1 n)) is an "inverse-eta" expansion
 ;   (fn [n] (add1 n)) -> add1 is an "eta" reduction (there are some restrictions)
-;
-;
 
 (comment
 
@@ -582,14 +580,31 @@
       (fn [c] ; goal - returns a lazy sequence of solutions
         (fn [] ((sixes x) c)))))
 
+  ; lift version, still fair
+  (defn fives [x]
+    (fn [c] ; goal constructor
+      (fn [] ; immature stream
+        ((μdisj ; disj goal constructor returns goal we execute in c
+           (== x 5)
+           (fives x)) c))))
+
+  (defn sixes [x]
+    (fn [c]
+      (fn []
+        ((μdisj
+           (== x 6)
+           (sixes x)) c))))
+
   (defn fives-and-sixes
     [x]
     (μdisj (fives x) (sixes x)))
 
   (take-n 3 ((call-fresh fives) (constraint-store)))
   (take-n 3 ((call-fresh sixes) (constraint-store)))
-  (take-n 4 ((call-fresh fives-and-sixes) (constraint-store)))
-  )
+  (doseq [i (take-n 10 ((call-fresh fives-and-sixes) (constraint-store)))]
+    (println i))
+  
+)
 
 
 
