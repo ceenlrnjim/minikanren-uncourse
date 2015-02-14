@@ -643,17 +643,30 @@
   [vs g]
   `(call-fresh 
     (fn [~(first vs)]
-      ~(if (empty? (rest vs)) g `(fresh+ ~(rest vs) ~g))
-      )
-    )
-  )
+      ~(if (empty? (rest vs)) g `(fresh+ ~(rest vs) ~g)))))
+
+(defmacro fresh
+  "introduce multiple freshes and a conjunction of multiple clauses as in minikanren"
+  [vs & goals]
+  `(fresh+ ~vs 
+           (μconj+ ~@goals)))
 
 (comment
-  (macroexpand '(fresh+ [x y z] (μconj+ (== x y) (== y z))))
-  (clojure.walk/macroexpand-all '(fresh+ [x y z] (μconj+ (== x y) (== y z))))
+  (macroexpand '(fresh+ [x y z] (μconj+ (== x y) (== y z) (== z 2))))
+  (clojure.walk/macroexpand-all '(fresh+ [x y z] (μconj+ (== x y) (== y z) (== z 2))))
 
   ((fresh+ [x y]
            (== x y)
+           ) (constraint-store))
+
+  (macroexpand '(fresh [x y z] (== x y) (== y z) (== z 2) ))
+  (clojure.walk/macroexpand-all '(fresh [x y z] (== x y) (== y z) (== z 2) ))
+
+  ((fresh [x y z]
+           (== x y)
+          (== x 2)
+          (!= z 5)
+
            ) (constraint-store))
   )
 
