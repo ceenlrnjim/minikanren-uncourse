@@ -475,17 +475,6 @@
       ; then invoke that goal with the constraint-store after incrementing its counter
       ((f (lvar ix)) (increment-counter c)))))
 
-; TODO: add tests
-(comment
-  (call-fresh (fn [x] (== x 5)))
-  ((call-fresh (fn [x] (== x 5))) (constraint-store))
-  ((call-fresh
-     (fn [x] 
-       (call-fresh 
-         (fn [y]
-           (== x y)))))
-   (constraint-store)))
-
 ; mplus and bind are stream operators (defining monad operations for our stream of answers)
 ; mplus is basically appending two streams together
 ; bind is the usual mapcat
@@ -578,65 +567,12 @@
     (= (count goals) 2) `(μconj ~(first goals) ~(second goals))
     :else `(μconj ~(first goals) (μconj+ ~@(rest goals)))))
 
-  ; TODO: tests
-  (comment
-     ((call-fresh (fn [x]
-                   (μdisj+
-                     (== x 5)
-                     (== x 6)
-                     (== x 7))
-                   )) (constraint-store))
-
-     ((call-fresh (fn [x]
-                   (μconj+
-                     (!= x 5)
-                     (!= x 6)
-                     (!= x 7))
-                   )) (constraint-store))
-
-    (macroexpand
-      '(μdisj+
-         (== x 5)
-         (== x 6)
-         (== x 7)))
-   
-    )
-  
 
 (defmacro conde [& lists-of-goals]
   (concat `(μdisj+)
      (map (fn [list-of-goals]
              `(μconj+ ~@list-of-goals))
            lists-of-goals)) )
-
-  ; TODO: tests
-  (comment
-
-    (macroexpand
-            '(conde
-                 [(== x 5) (== x y)]
-                 [(== x 6) (== x y)]
-                 [(== y 7) (!= x y)]))
-
-    (clojure.walk/macroexpand-all
-            '(conde
-                 [(== x 5) (== x y)]
-                 [(== x 6) (== x y)]
-                 [(== y 7) (!= x y)]))
-
-
-    ((call-fresh
-       (fn [x]
-         (call-fresh
-           (fn [y]
-             (conde
-               [(== x 5) (== x y)]
-               [(== x 6) (== x y)]
-               [(== y 7) (!= x y)])))))
-     (constraint-store))
-
-    )   
-
 
 (defmacro fresh+
   "introduces multiple variables to a single goal"
@@ -651,24 +587,10 @@
   `(fresh+ ~vs 
            (μconj+ ~@goals)))
 
-(comment
-  (macroexpand '(fresh+ [x y z] (μconj+ (== x y) (== y z) (== z 2))))
-  (clojure.walk/macroexpand-all '(fresh+ [x y z] (μconj+ (== x y) (== y z) (== z 2))))
-
-  ((fresh+ [x y]
-           (== x y)
-           ) (constraint-store))
-
-  (macroexpand '(fresh [x y z] (== x y) (== y z) (== z 2) ))
-  (clojure.walk/macroexpand-all '(fresh [x y z] (== x y) (== y z) (== z 2) ))
-
-  ((fresh [x y z]
-           (== x y)
-          (== x 2)
-          (!= z 5)
-
-           ) (constraint-store))
-  )
+(defn srun 
+  "simple run - not full reification, just taking away need for constraint-store etc."
+  [g]
+  (g (constraint-store)))
 
 ; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
 ; inverse-eta delay
@@ -688,9 +610,7 @@
   (defn fives [x]
     (μdisj
       (== x 5)
-      (zzz (fives x))
-      )
-    )
+      (zzz (fives x))))
 
   (defn sixes [x] ; goal constructor
     (μdisj ; goal constructor takes two goals
@@ -707,11 +627,9 @@
            (fives x)) c))))
 
   (defn sixes [x]
-    (fn [c]
-      (fn []
-        ((μdisj
-           (== x 6)
-           (sixes x)) c))))
+    (μdisj 
+      (== x 6)
+      (zzz (sixes x))))
 
   (defn fives-and-sixes
     [x]

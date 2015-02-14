@@ -110,3 +110,40 @@
     (is (empty? res1))
     (is (empty? res2))
     (is (= 1 (count ((μconj g1 g1) (constraint-store)))))))
+
+(deftest μdisj+-test
+  (let [s1 ((call-fresh (fn [x] (μdisj+ (== x 5) (== x 6) (== x 7)))) (constraint-store))
+        s2 ((call-fresh (fn [x] (μdisj (== x 5) (μdisj (== x 6) (== x 7))))) (constraint-store))]
+    (is (= s1 s2))))
+
+(deftest μconj+-test
+  (let [s1 ((call-fresh (fn [x] (μconj+ (!= x 5) (!= x 6) (!= x 7)))) (constraint-store))
+        s2 ((call-fresh (fn [x] (μconj (!= x 5) (μconj (!= x 6) (!= x 7))))) (constraint-store))]
+    (is (= s1 s2))))
+
+(deftest conde-test
+  ; test disj
+  (let [s1 ((call-fresh (fn [x] (conde [(== x 5)] [(== x 6)]))) (constraint-store))
+        s2 ((call-fresh (fn [x] (μdisj (== x 5) (== x 6)))) (constraint-store))]
+    (is (= s1 s2)))
+  ; conj test
+  (let [s1 ((call-fresh (fn [x] (conde [(!= x 5) (!= x 6)]))) (constraint-store))
+        s2 ((call-fresh (fn [x] (μconj (!= x 5) (!= x 6)))) (constraint-store))]
+    (is (= s1 s2))))
+
+(deftest fresh+-test
+  (let [s1 (srun (fresh+ [x y] (== x y)))
+        s2 (srun (call-fresh (fn [x] (call-fresh (fn [y] (== x y))))))]
+    (is (= s1 s2))))
+
+(deftest fresh-test
+  (let [s1 (srun (fresh [x y z] (== x y) (== y z)))
+        s2 (srun (call-fresh 
+                   (fn [x]
+                     (call-fresh
+                       (fn [y]
+                         (call-fresh
+                           (fn [z]
+                             (μconj
+                               (== x y) (== y z)))))))))]
+    (is (= s1 s2))))
