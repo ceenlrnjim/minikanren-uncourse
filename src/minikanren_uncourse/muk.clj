@@ -4,7 +4,9 @@
 ; github.com/jasonhemann/microKanren
 
 (ns minikanren-uncourse.muk
-  (:refer-clojure :exclude [==]))
+  (:refer-clojure :exclude [==])
+  (:require [clojure.walk])
+  )
 
 ; minikanren uncourse #7 - 
 ;
@@ -576,30 +578,64 @@
     (= (count goals) 2) `(μconj ~(first goals) ~(second goals))
     :else `(μconj ~(first goals) (μconj+ ~@(rest goals)))))
 
-(comment
-   ((call-fresh (fn [x]
-                 (μdisj+
-                   (== x 5)
-                   (== x 6)
-                   (== x 7))
-                 )) (constraint-store))
+  ; TODO: tests
+  (comment
+     ((call-fresh (fn [x]
+                   (μdisj+
+                     (== x 5)
+                     (== x 6)
+                     (== x 7))
+                   )) (constraint-store))
 
-   ((call-fresh (fn [x]
-                 (μconj+
-                   (!= x 5)
-                   (!= x 6)
-                   (!= x 7))
-                 )) (constraint-store))
+     ((call-fresh (fn [x]
+                   (μconj+
+                     (!= x 5)
+                     (!= x 6)
+                     (!= x 7))
+                   )) (constraint-store))
 
-(macroexpand
-  '(μdisj+
-     (== x 5)
-     (== x 6)
-     (== x 7)))
- 
-  )
-  
+    (macroexpand
+      '(μdisj+
+         (== x 5)
+         (== x 6)
+         (== x 7)))
    
+    )
+  
+
+(defmacro conde [& lists-of-goals]
+  (concat `(μdisj+)
+     (map (fn [list-of-goals]
+             `(μconj+ ~@list-of-goals))
+           lists-of-goals)) )
+
+  ; TODO: tests
+  (comment
+
+    (macroexpand
+            '(conde
+                 [(== x 5) (== x y)]
+                 [(== x 6) (== x y)]
+                 [(== y 7) (!= x y)]))
+
+    (clojure.walk/macroexpand-all
+            '(conde
+                 [(== x 5) (== x y)]
+                 [(== x 6) (== x y)]
+                 [(== y 7) (!= x y)]))
+
+
+    ((call-fresh
+       (fn [x]
+         (call-fresh
+           (fn [y]
+             (conde
+               [(== x 5) (== x y)]
+               [(== x 6) (== x y)]
+               [(== y 7) (!= x y)])))))
+     (constraint-store))
+
+    )   
 
 ; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
 ; inverse-eta delay
@@ -653,6 +689,5 @@
   (doseq [i (take-n 10 ((call-fresh fives-and-sixes) (constraint-store)))]
     (println i))
 )
-
-
+  
 
