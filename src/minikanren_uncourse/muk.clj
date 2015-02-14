@@ -637,6 +637,26 @@
 
     )   
 
+
+(defmacro fresh+
+  "introduces multiple variables to a single goal"
+  [vs g]
+  `(call-fresh 
+    (fn [~(first vs)]
+      ~(if (empty? (rest vs)) g `(fresh+ ~(rest vs) ~g))
+      )
+    )
+  )
+
+(comment
+  (macroexpand '(fresh+ [x y z] (μconj+ (== x y) (== y z))))
+  (clojure.walk/macroexpand-all '(fresh+ [x y z] (μconj+ (== x y) (== y z))))
+
+  ((fresh+ [x y]
+           (== x y)
+           ) (constraint-store))
+  )
+
 ; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
 ; inverse-eta delay
 ;   ex: (add1 5) => 6
