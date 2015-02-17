@@ -362,10 +362,3 @@
 ;; ---------------------------------------------
 ; TODO: reificiation
 
-; "The scarier sounding the term, the easier it is to understand" - Dan Friedman
-; inverse-eta delay
-;   ex: (add1 5) => 6
-;   add1 is equivalent to (fn [n] (add1 n))
-;   add1 -> (fn [n] (add1 n)) is an "inverse-eta" expansion
-;   (fn [n] (add1 n)) -> add1 is an "eta" reduction (there are some restrictions)
-
