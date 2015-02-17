@@ -172,3 +172,9 @@
     (is (= (get (substitution (nth res 3)) (lvar 0)) 6))
     )
   )
+
+(deftest symbolo-test
+  (is (= mzero (srun (fresh [x] (== x 5) (symbolo x)))))
+  (is (= 1 (count (srun (fresh [x] (== x 'foo) (symbolo x))))))
+  (is (= mzero (srun (fresh [x] (symbolo x) (== x 5)))))
+  )

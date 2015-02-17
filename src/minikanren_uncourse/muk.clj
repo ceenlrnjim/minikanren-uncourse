@@ -22,28 +22,37 @@
        (lvar? b)
        (= (:lvarid a) (:lvarid b))))
 
-(declare check-disequalities)
+(declare check-constraints)
 
 (defn constraint-store 
   ([] (constraint-store {} [] 0))
   ([s]
    {:substitution s
     :disequalities []
+    :symbols []
     :counter 0 })
   ([s d]
    {:substitution s
     :disequalities d
+    :symbols []
     :counter 0 })
   ([s d c]
    {:substitution s
     :disequalities d
+    :symbols []
     :counter c }))
 
 (defn constraint-store? [c]
-  (and (map? c) (contains? c :substitution) (contains? c :disequalities)))
+  (and (map? c) 
+       (contains? c :substitution) 
+       (contains? c :disequalities) 
+       ;(contains? c :symbols) 
+       ;(contains? c :counter)
+       ))
 
 (defn substitution [c] (:substitution c))
 (defn disequalities [c] (:disequalities c))
+(defn symbol-constraints [c] (:symbols c))
 (def counter :counter) ; another way to write the above
 
 (defn add-diseq [c diseq-constraint]
@@ -63,6 +72,10 @@
   {:pre [(constraint-store? c)]}
   (assoc c :counter (inc (:counter c))))
 
+(defn add-symbol-constraint [c x]
+  {:pre [(constraint-store? c) (lvar? x)]}
+  (assoc c :symbols (conj (:symbols c) x)))
+
 
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any
@@ -70,7 +83,7 @@
   [u v c]
   (let [new-c (assoc-in c [:substitution u] v)]
     ; we can shut off disequality specific functionality by just returning new-c here
-    (check-disequalities new-c)))
+    (check-constraints new-c)))
 
 ;; ---------------------------------------------
 ;; Stream definition handling utilities
@@ -278,9 +291,6 @@
     (let [c (diseq u v c)]
       (if c (unit c) mzero))))
 
-
-
-
 (defn call-fresh 
   "goal constructor that creates a new logic variable and passes it to another goal constructor"
   [f]
@@ -292,8 +302,40 @@
       ((f (lvar ix)) (increment-counter c)))))
 
 ; TODO: symbolo
+(defn symbolo
+  [x]
+  {:pre [(lvar? x)]}
+  (fn [c]
+    (let [x (walk x c)]
+      (cond 
+        (lvar? x) (unit (add-symbol-constraint c x))
+        ; not a variable, meaning this variable is already bound - check if it is bound to a symbol
+        (symbol? x) (unit c)
+        ; if bound, but not to a symbol, then this constraint fails
+        :else mzero))))
+
+(defn check-symbol-constraints [c]
+  {:pre [(constraint-store? c)]}
+  (reduce
+    (fn [res v]
+      (let [v (walk v c)]
+        (cond 
+          (lvar? v) c ; still not bound, nothing changes
+          (symbol? v) c ; TODO: we can remove this constriant now that v is bound to a symbol
+          :else (reduced false))))
+    c
+    (symbol-constraints c)))
+
 ; TODO: numbero
 
+
+(defn check-constraints [c]
+  {:pre [(constraint-store? c)]}
+  (-> c
+      check-disequalities 
+      check-symbol-constraints
+      )
+  )
 ;; ---------------------------------------------
 ;; goal combinators - conjunction, disjunction
 ;; ---------------------------------------------
@@ -361,4 +403,3 @@
 ;; Reification
 ;; ---------------------------------------------
 ; TODO: reificiation
-
