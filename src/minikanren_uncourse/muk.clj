@@ -78,9 +78,8 @@
 
 (defn remove-symbol-constraint [c x]
   {:pre [(constraint-store? c) (lvar? x)]}
-  ; TODO:
-  c
-  )
+  (let [new-sc (filter #(not (lvar=? % x)) (:symbols c))]
+    (assoc c :symbols new-sc)))
 
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any

@@ -178,4 +178,5 @@
   (is (= 1 (count (srun (fresh [x] (== x 'foo) (symbolo x))))))
   (is (= mzero (srun (fresh [x] (symbolo x) (== x 5)))))
   (is (= [(lvar 0)] (symbol-constraints (first (srun (fresh [x] (symbolo x)))))))
+  (is (= [] (symbol-constraints (first (srun (fresh [x] (symbolo x) (== x 'foo)))))))
   )
