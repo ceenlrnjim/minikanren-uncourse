@@ -149,3 +149,26 @@
                              (μconj
                                (== x y) (== y z)))))))))]
     (is (= s1 s2))))
+
+(deftest recursive-goal-constructor-test
+  (defn fives [x]
+    (μdisj
+      (== x 5)
+      (zzz (fives x))))
+
+  (defn sixes [x]
+    (μdisj 
+      (== x 6)
+      (zzz (sixes x))))
+
+  (defn fives-and-sixes
+    [x]
+    (μdisj (fives x) (sixes x)))
+
+  (let [res (take-n 4 (srun (call-fresh fives-and-sixes)))]
+    (is (= (get (substitution (nth res 0)) (lvar 0)) 5))
+    (is (= (get (substitution (nth res 1)) (lvar 0)) 6))
+    (is (= (get (substitution (nth res 2)) (lvar 0)) 5))
+    (is (= (get (substitution (nth res 3)) (lvar 0)) 6))
+    )
+  )
