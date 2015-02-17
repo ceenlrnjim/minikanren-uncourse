@@ -200,17 +200,10 @@
   {:pre [(constraint-store? a) (constraint-store? b)]}
   (apply dissoc (substitution b) (keys (substitution a))))
 
-; TODO: can I only ever have disequality constraints that are either one term (directly) or two terms (pair comparison)?
-; I think so since these are the only things we can unify with logic variables
-; but note that any extension to unification/disequality constraints will need to be reflected here
 (defn reconstitute-disequality
   [constraint]
-  (condp = (count constraint) ; need to determine if this represents a unified pair, or a just a single logic variable
-    1 (first constraint) ; not a pair, just returning two results
-    2 (let [[k1 v1] (first constraint)
-            [k2 v2] (second constraint)]
-              [[k1 k2] [v1 v2]])
-    (throw (IllegalArgumentException. "Only supports disequalities with 1 or two terms"))))
+  {:pre [(map? constraint)]}
+  [(keys constraint) (vals constraint)])
 
 (defn check-diseq
   "validate, and possibly modify, a single disequality constraint against the specified substitution"

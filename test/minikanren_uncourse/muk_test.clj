@@ -26,6 +26,7 @@
   (is (= {{:lvarid 0} 6} (check-diseq {(lvar 0) (lvar 1) (lvar 1) 5} {(lvar 0) 6})))
   (is (= false (check-diseq {(lvar 0) (lvar 1) (lvar 1) 6} {(lvar 0) 6})))
   (is (= {(lvar 0) (lvar 1)}) (check-diseq {(lvar 2) 5} {(lvar 0) (lvar 1) (lvar 2) 5}))
+
   )
   
 (deftest check-disequalities-test
@@ -33,7 +34,8 @@
     (constraint-store {(lvar 0) 5} [{(lvar 0) 6}])))
   (is (not (check-disequalities
     (constraint-store {(lvar 0) 6} [{(lvar 0) 6}]))))
-  (is (check-disequalities (constraint-store {(lvar 2) 5} [{(lvar 0) (lvar 1) (lvar 2) 5}]))))
+  (is (check-disequalities (constraint-store {(lvar 2) 5} [{(lvar 0) (lvar 1) (lvar 2) 5}])))
+  (is (check-disequalities (constraint-store {(lvar 0) (lvar 3)} [{(lvar 0) 0 (lvar 1) 1 (lvar 2) 2 (lvar 3) 3}]))))
   
 (deftest diseq-test
   (is (= false (diseq 5 5 (constraint-store))))
