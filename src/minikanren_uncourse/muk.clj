@@ -76,6 +76,11 @@
   {:pre [(constraint-store? c) (lvar? x)]}
   (assoc c :symbols (conj (:symbols c) x)))
 
+(defn remove-symbol-constraint [c x]
+  {:pre [(constraint-store? c) (lvar? x)]}
+  ; TODO:
+  c
+  )
 
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any
@@ -318,10 +323,10 @@
   {:pre [(constraint-store? c)]}
   (reduce
     (fn [res v]
-      (let [v (walk v c)]
+      (let [vw (walk v c)]
         (cond 
-          (lvar? v) c ; still not bound, nothing changes
-          (symbol? v) c ; TODO: we can remove this constriant now that v is bound to a symbol
+          (lvar? vw) c ; still not bound, nothing changes
+          (symbol? vw) (remove-symbol-constraint c v) ; TODO: we can remove this constriant now that v is bound to a symbol
           :else (reduced false))))
     c
     (symbol-constraints c)))
