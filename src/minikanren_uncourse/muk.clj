@@ -323,10 +323,10 @@
   {:pre [(constraint-store? c)]}
   (reduce
     (fn [res v]
-      (let [vw (walk v c)]
+      (let [v* (walk v c)] ; we need the var in the second case below so we don't want to shadow the variable name
         (cond 
-          (lvar? vw) c ; still not bound, nothing changes
-          (symbol? vw) (remove-symbol-constraint c v) ; we can remove this constriant now that v is bound to a symbol
+          (lvar? v*) c ; still not bound, nothing changes
+          (symbol? v*) (remove-symbol-constraint c v) ; we can remove this constriant now that v is bound to a symbol
           :else (reduced false))))
     c
     (symbol-constraints c)))
@@ -337,7 +337,10 @@
 ; TODO: run relational interpreter on top of this microkanren implementation
 
 
-(defn check-constraints [c]
+(defn check-constraints 
+  "validate that the substitution in the specified constraint store don't violate any of the
+  additional constraints"
+  [c]
   {:pre [(constraint-store? c)]}
   (-> c
       check-disequalities 
