@@ -332,6 +332,9 @@
     (symbol-constraints c)))
 
 ; TODO: numbero
+; TODO: absento
+; TODO: support lists (conso, resto)
+; TODO: run relational interpreter on top of this microkanren implementation
 
 
 (defn check-constraints [c]
