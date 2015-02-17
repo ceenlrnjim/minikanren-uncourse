@@ -305,8 +305,8 @@
       ; then invoke that goal with the constraint-store after incrementing its counter
       ((f (lvar ix)) (increment-counter c)))))
 
-; TODO: symbolo
 (defn symbolo
+  "goal constructor that adds a constraint that the specified variable must be a symbol"
   [x]
   {:pre [(lvar? x)]}
   (fn [c]
@@ -319,13 +319,14 @@
         :else mzero))))
 
 (defn check-symbol-constraints [c]
+  "validates that the substitutions in the specified constraint store do not violate the symbolo constraints"
   {:pre [(constraint-store? c)]}
   (reduce
     (fn [res v]
       (let [vw (walk v c)]
         (cond 
           (lvar? vw) c ; still not bound, nothing changes
-          (symbol? vw) (remove-symbol-constraint c v) ; TODO: we can remove this constriant now that v is bound to a symbol
+          (symbol? vw) (remove-symbol-constraint c v) ; we can remove this constriant now that v is bound to a symbol
           :else (reduced false))))
     c
     (symbol-constraints c)))
