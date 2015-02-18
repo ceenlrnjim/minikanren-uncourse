@@ -29,34 +29,24 @@
   ([s]
    {:substitution s
     :disequalities []
-    :symbols []
-    :numbers []
     :counter 0 })
   ([s d]
    {:substitution s
     :disequalities d
-    :symbols []
-    :numbers []
     :counter 0 })
   ([s d c]
    {:substitution s
     :disequalities d
-    :symbols []
-    :numbers []
     :counter c }))
 
 (defn constraint-store? [c]
   (and (map? c) 
        (contains? c :substitution) 
        (contains? c :disequalities) 
-       ;(contains? c :symbols) 
-       ;(contains? c :counter)
        ))
 
 (defn substitution [c] (:substitution c))
 (defn disequalities [c] (:disequalities c))
-(defn symbol-constraints [c] (:symbols c))
-(defn number-constraints [c] (:numbers c))
 (def counter :counter) ; another way to write the above
 
 (defn add-diseq [c diseq-constraint]
@@ -76,25 +66,15 @@
   {:pre [(constraint-store? c)]}
   (assoc c :counter (inc (:counter c))))
 
-(defn add-symbol-constraint [c x]
-  {:pre [(constraint-store? c) (lvar? x)]}
-  (assoc c :symbols (conj (:symbols c) x)))
 
-(defn remove-symbol-constraint [c x]
+(defn add-predicate-constraint [c k x]
   {:pre [(constraint-store? c) (lvar? x)]}
-  (let [new-sc (filter #(not (lvar=? % x)) (:symbols c))]
-    (assoc c :symbols new-sc)))
+  (assoc c k (conj (get c k) x)))
 
-; TODO: same as symbolo, abstract?
-(defn add-number-constraint [c x]
+(defn remove-predicate-constraint [c k x]
   {:pre [(constraint-store? c) (lvar? x)]}
-  (assoc c :numbers (conj (:numbers c) x)))
-
-(defn remove-number-constraint [c x]
-  {:pre [(constraint-store? c) (lvar? x)]}
-  (let [new-sc (filter #(not (lvar=? % x)) (:numbers c))]
-    (assoc c :numbers new-sc)))
-
+  (let [new-sc (filter #(not (lvar=? % x)) (k c))]
+    (assoc c k new-sc)))
 
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any
@@ -320,59 +300,33 @@
       ; then invoke that goal with the constraint-store after incrementing its counter
       ((f (lvar ix)) (increment-counter c)))))
 
-(defn symbolo
-  "goal constructor that adds a constraint that the specified variable must be a symbol"
-  [x]
-  {:pre [(lvar? x)]}
-  (fn [c]
-    (let [x (walk x c)]
-      (cond 
-        (lvar? x) (unit (add-symbol-constraint c x))
-        ; not a variable, meaning this variable is already bound - check if it is bound to a symbol
-        (symbol? x) (unit c)
-        ; if bound, but not to a symbol, then this constraint fails
-        :else mzero))))
+(defn predicate-constraint [cs-key pred]
+  (fn [x] ; goal constructor
+    (fn [c] ; goal
+      (let [x (walk x c)]
+        (cond 
+          (lvar? x) (unit (add-predicate-constraint c cs-key x))
+          (pred x) (unit c)
+          :else mzero)))))
 
-(defn check-symbol-constraints [c]
-  "validates that the substitutions in the specified constraint store do not violate the symbolo constraints"
-  {:pre [(constraint-store? c)]}
+(defn check-predicate-constraint [cs-key pred]
+  (fn [c]
   (reduce
     (fn [res v]
       (let [v* (walk v c)] ; we need the var in the second case below so we don't want to shadow the variable name
         (cond 
           (lvar? v*) c ; still not bound, nothing changes
-          (symbol? v*) (remove-symbol-constraint c v) ; we can remove this constriant now that v is bound to a symbol
+          (pred v*) (remove-predicate-constraint c cs-key v)
           :else (reduced false))))
     c
-    (symbol-constraints c)))
+    (get c cs-key))))
 
-;TODO: same as symbolo, abstract - predicate constraint?
+(def symbolo (predicate-constraint :symbols symbol?))
+(def check-symbol-constraints (check-predicate-constraint :symbols symbol?))
+;
 ; TODO: symbolo interaction?
-(defn numbero
-  "goal constructor that adds a constraint that the specified variable must be a number"
-  [x]
-  {:pre [(lvar? x)]}
-  (fn [c]
-    (let [x (walk x c)]
-      (cond 
-        (lvar? x) (unit (add-number-constraint c x))
-        ; not a variable, meaning this variable is already bound - check if it is bound to a symbol
-        (number? x) (unit c)
-        ; if bound, but not to a symbol, then this constraint fails
-        :else mzero))))
-
-(defn check-number-constraints [c]
-  "validates that the substitutions in the specified constraint store do not violate the symbolo constraints"
-  {:pre [(constraint-store? c)]}
-  (reduce
-    (fn [res v]
-      (let [v* (walk v c)] ; we need the var in the second case below so we don't want to shadow the variable name
-        (cond 
-          (lvar? v*) c ; still not bound, nothing changes
-          (number? v*) (remove-number-constraint c v) ; we can remove this constriant now that v is bound to a symbol
-          :else (reduced false))))
-    c
-    (number-constraints c)))
+(def numbero (predicate-constraint :numbers number?))
+(def check-number-constraints (check-predicate-constraint :numbers number?))
 
 ; TODO: absento
 ; TODO: support lists (conso, resto)

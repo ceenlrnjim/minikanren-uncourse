@@ -177,8 +177,8 @@
   (is (= mzero (srun (fresh [x] (== x 5) (symbolo x)))))
   (is (= 1 (count (srun (fresh [x] (== x 'foo) (symbolo x))))))
   (is (= mzero (srun (fresh [x] (symbolo x) (== x 5)))))
-  (is (= [(lvar 0)] (symbol-constraints (first (srun (fresh [x] (symbolo x)))))))
-  (is (= [] (symbol-constraints (first (srun (fresh [x] (symbolo x) (== x 'foo)))))))
+  (is (= [(lvar 0)] (:symbols (first (srun (fresh [x] (symbolo x)))))))
+  (is (= [] (:symbols (first (srun (fresh [x] (symbolo x) (== x 'foo)))))))
   )
 
 
@@ -187,6 +187,6 @@
   (is (= mzero (srun (fresh [x] (== x "a") (numbero x)))))
   (is (= 1 (count (srun (fresh [x] (== x 5) (numbero x))))))
   (is (= mzero (srun (fresh [x] (numbero x) (== x "a")))))
-  (is (= [(lvar 0)] (number-constraints (first (srun (fresh [x] (numbero x)))))))
-  (is (= [] (number-constraints (first (srun (fresh [x] (numbero x) (== x 5)))))))
+  (is (= [(lvar 0)] (:numbers (first (srun (fresh [x] (numbero x)))))))
+  (is (= [] (:numbers (first (srun (fresh [x] (numbero x) (== x 5)))))))
   )
