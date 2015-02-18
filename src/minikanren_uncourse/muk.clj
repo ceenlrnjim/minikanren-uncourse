@@ -410,4 +410,38 @@
 ;; ---------------------------------------------
 ;; Reification
 ;; ---------------------------------------------
-; TODO: reificiation
+(defn reify-name
+  "returns the display name for the logic variable with counter n"
+  [n]
+  (symbol (str "_." n)))
+
+(defn reify-s 
+  "bind any unbound lvars to a descriptive value,
+  or recurse into its values if it is a collection"
+  [v c]
+  (let [v (walk v c)]
+    (cond
+      (lvar? v) 
+        (ext-s v (reify-name (count (substitution c))) c) ; TODO: I think ext-s is safe here
+      (unifiable-collection? v) 
+        (reify-s (rest v) ; reify the rest of the collection against the updated substitution
+                 (reify-s (first v) c)) ; returns a substitution with v in it
+      :else c)))
+
+(defn walk*
+  "deeply walk the substitution - including the members of any collection that is the value of an lvar"
+  [v c]
+  (let [v (walk v c)] 
+    (cond
+      (lvar? v) v
+      (unifiable-collection? v)
+        (cons (walk* (first v) c) 
+              (walk* (rest v) c))
+      :else v)))
+
+(defn reify-1st
+  [c]
+  {:pre [(constraint-store? c)]}
+  (let [v (walk (lvar 0) c)] ; lookup the value of the first lvar in the substitution
+    (walk* v (reify-s v (constraint-store)))))
+
