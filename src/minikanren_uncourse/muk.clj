@@ -450,3 +450,14 @@
   (let [v (walk v c)] ; lookup the value of the first lvar in the substitution
     (walk* v (reify-s v (constraint-store)))))
 
+(defn reify-1st
+  [c]
+  (μreify (lvar 0) c))
+
+(defn reify-all
+  [c]
+  (map #(μreify (lvar %) c) (range (:counter c))))
+
+
+;(map reify-1st (take 2 (call-goal (fresh [x y] (μdisj+ (== x 5) (== x 6) (== x y) (== y 7))))))
+;(print (map reify-all (take 1 (call-goal (fresh [x y z] (== [x y z] [y z x]))))))
