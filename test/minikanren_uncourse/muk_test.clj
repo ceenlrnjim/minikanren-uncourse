@@ -134,13 +134,13 @@
     (is (= s1 s2))))
 
 (deftest fresh+-test
-  (let [s1 (srun (fresh+ [x y] (== x y)))
-        s2 (srun (call-fresh (fn [x] (call-fresh (fn [y] (== x y))))))]
+  (let [s1 (call-goal (fresh+ [x y] (== x y)))
+        s2 (call-goal (call-fresh (fn [x] (call-fresh (fn [y] (== x y))))))]
     (is (= s1 s2))))
 
 (deftest fresh-test
-  (let [s1 (srun (fresh [x y z] (== x y) (== y z)))
-        s2 (srun (call-fresh 
+  (let [s1 (call-goal (fresh [x y z] (== x y) (== y z)))
+        s2 (call-goal (call-fresh 
                    (fn [x]
                      (call-fresh
                        (fn [y]
@@ -165,7 +165,7 @@
     [x]
     (μdisj (fives x) (sixes x)))
 
-  (let [res (take-n 4 (srun (call-fresh fives-and-sixes)))]
+  (let [res (take-n 4 (call-goal (call-fresh fives-and-sixes)))]
     (is (= (get (substitution (nth res 0)) (lvar 0)) 5))
     (is (= (get (substitution (nth res 1)) (lvar 0)) 6))
     (is (= (get (substitution (nth res 2)) (lvar 0)) 5))
@@ -174,19 +174,19 @@
   )
 
 (deftest symbolo-test
-  (is (= mzero (srun (fresh [x] (== x 5) (symbolo x)))))
-  (is (= 1 (count (srun (fresh [x] (== x 'foo) (symbolo x))))))
-  (is (= mzero (srun (fresh [x] (symbolo x) (== x 5)))))
-  (is (= [(lvar 0)] (:symbols (first (srun (fresh [x] (symbolo x)))))))
-  (is (= [] (:symbols (first (srun (fresh [x] (symbolo x) (== x 'foo)))))))
+  (is (= mzero (call-goal (fresh [x] (== x 5) (symbolo x)))))
+  (is (= 1 (count (call-goal (fresh [x] (== x 'foo) (symbolo x))))))
+  (is (= mzero (call-goal (fresh [x] (symbolo x) (== x 5)))))
+  (is (= [(lvar 0)] (:symbols (first (call-goal (fresh [x] (symbolo x)))))))
+  (is (= [] (:symbols (first (call-goal (fresh [x] (symbolo x) (== x 'foo)))))))
   )
 
 
 
 (deftest numbero-test
-  (is (= mzero (srun (fresh [x] (== x "a") (numbero x)))))
-  (is (= 1 (count (srun (fresh [x] (== x 5) (numbero x))))))
-  (is (= mzero (srun (fresh [x] (numbero x) (== x "a")))))
-  (is (= [(lvar 0)] (:numbers (first (srun (fresh [x] (numbero x)))))))
-  (is (= [] (:numbers (first (srun (fresh [x] (numbero x) (== x 5)))))))
+  (is (= mzero (call-goal (fresh [x] (== x "a") (numbero x)))))
+  (is (= 1 (count (call-goal (fresh [x] (== x 5) (numbero x))))))
+  (is (= mzero (call-goal (fresh [x] (numbero x) (== x "a")))))
+  (is (= [(lvar 0)] (:numbers (first (call-goal (fresh [x] (numbero x)))))))
+  (is (= [] (:numbers (first (call-goal (fresh [x] (numbero x) (== x 5)))))))
   )

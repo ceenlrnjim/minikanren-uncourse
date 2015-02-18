@@ -137,6 +137,10 @@
       (if (nil-stream? s) mzero
         (cons-stream (car-stream s) (take-n (dec n) (cdr-stream s)))))))
 
+(defn take-all [s]
+  (let [s (pull s)]
+    (if (nil-stream? s) mzero
+        (cons-stream (car-stream s) (take-all (cdr-stream s))))))
 
 (defn mplus
   [s1 s2] ; two stream monads
@@ -402,7 +406,7 @@
   `(fresh+ ~vs 
            (μconj+ ~@goals)))
 
-(defn srun 
+(defn call-goal 
   "simple run - not full reification, just taking away need for constraint-store etc."
   [g]
   (g (constraint-store)))
@@ -439,9 +443,10 @@
               (walk* (rest v) c))
       :else v)))
 
-(defn reify-1st
-  [c]
+(defn μreify
+  "reify the value v with respect to c"
+  [v c]
   {:pre [(constraint-store? c)]}
-  (let [v (walk (lvar 0) c)] ; lookup the value of the first lvar in the substitution
+  (let [v (walk v c)] ; lookup the value of the first lvar in the substitution
     (walk* v (reify-s v (constraint-store)))))
 
