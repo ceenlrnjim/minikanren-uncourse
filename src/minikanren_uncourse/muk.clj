@@ -42,8 +42,7 @@
 (defn constraint-store? [c]
   (and (map? c) 
        (contains? c :substitution) 
-       (contains? c :disequalities) 
-       ))
+       (contains? c :disequalities)))
 
 (defn substitution [c] (:substitution c))
 (defn disequalities [c] (:disequalities c))
@@ -75,6 +74,24 @@
   {:pre [(constraint-store? c) (lvar? x)]}
   (let [new-sc (filter #(not (lvar=? % x)) (k c))]
     (assoc c k new-sc)))
+
+(defn conso-constraint? [x]
+  (and (map? x) (contains? x :h) (contains? x :t) (contains? x :l)))
+
+(defn add-conso-constraint [c h t l]
+  {:pre [(constraint-store? c)]}
+  (assoc c :consos (conj (:consos c) {:h h :t t :l l})))
+
+(defn remove-conso-constraint [c h t l]
+  (assoc c :consos (filter #(or (not (= (:h %) h))
+                                (not (= (:t %) t))
+                                (not (= (:l %) l))) 
+                           (:consos c))))
+
+(defn consos
+  [c]
+  {:pre [(constraint-store? c)]}
+  (:consos c))
 
 (defn ext-s 
   "extend a substitution with the pair (u . v) if it doesn't violate any
@@ -332,22 +349,96 @@
 (def numbero (predicate-constraint :numbers number?))
 (def check-number-constraints (check-predicate-constraint :numbers number?))
 
+; no idea what I'm doing - just plunging ahead and seeing what happens
+(defn conso
+  "goal constructor that yields a goal that constrains three logic variables to forming a cons-cell"
+  [h t x]
+  (fn [c] ; goal function
+    (let [h (walk h c)
+          t (walk t c)
+          x (walk x c)]
+      (cond
+        ; case 0 - x or t is bound but not a collection - fail
+        (or (and (not (lvar? t)) (not (unifiable-collection? t)))
+            (and (not (lvar? x)) (not (unifiable-collection? x))))
+          mzero
+
+        ; case 1 - all variables are bound, does the cons hold?
+        (and (not (lvar? h)) (not (lvar? t)) (not (lvar? x)) (unifiable-collection? t) (unifiable-collection? x))
+          (if (= x (cons h t)) (unit c) mzero)
+          
+
+        ; case 2 - only head is not bound, so we can bind it now (or fail)
+        (and (lvar? h) (not (lvar? t)) (not (lvar? x)) (unifiable-collection? t) (unifiable-collection? x))
+          (if (= (rest x) t) 
+            (unit (ext-s h (first x) c))
+            mzero)
+
+        ; case 3 - only tails is not bound, so we can bind it
+         (and (not (lvar? h)) (lvar? t) (not (lvar? x)) (unifiable-collection? x))
+          (if (= (first x) h) 
+            (unit (ext-s t (rest x) c))
+            mzero)
+
+        ; case 4 - only the output list is not bound, so bind it
+        (and (not (lvar? h)) (not (lvar? t)) (lvar? x) (unifiable-collection? t))
+            (unit (ext-s x (cons h t) c))
+
+        ; case 5 - at least two are unbound so we need to add a new constraint to the store
+        :else 
+          (unit (add-conso-constraint c h t x))))))
+
 ; TODO: absento
 ; TODO: support lists (conso, resto)
 ; TODO: run relational interpreter on top of this microkanren implementation
 
+(defn validate-conso-constraint
+  "validates that this single conso constraint is valid with respect to the specified constraint store's substitution"
+  [c constraint]
+  {:pre [(constraint-store? c) (conso-constraint? constraint)]}
+  (let [{h :h t :t l :l} constraint
+        res (first ((conso h t l) c))] ; am I always guaranteed to get 1 result here?  I think I am
+    (if (nil? res) false ; in this case the conso failed and therefore first returned nil
+      (cond
+        ; case 1 - failed to unify with these substitutions, so it is not valid
+        (= mzero res) false
+        ; case 2 - constraint store is unchanged - still valid
+        (= c res) c
+        ; case 3 - substitution is extended - still valid, but we have more information and things can be updated
+        (> (count (substitution res)) (count (substitution c)))
+          ; now we can use the new substitution and remove this constraint
+          (remove-conso-constraint res h t l)
+        ; case 4 - conso-constraint added - nothing has changed, return the original c
+        (> (count (consos res)) (count (consos c)))
+          c))))
+
+(defn check-conso-constraints [c]
+  {:pre [(constraint-store? c)]}
+  (reduce 
+    (fn [cs constraint]
+      (or (validate-conso-constraint cs constraint) (reduced false)))
+    c
+    (consos c)))
+
+(defn check-wrapper 
+  [c f]
+  (if (= false c) c (f c)))
 
 (defn check-constraints 
   "validate that the substitution in the specified constraint store don't violate any of the
   additional constraints"
   [c]
   {:pre [(constraint-store? c)]}
-  (-> c
-      check-disequalities 
-      check-symbol-constraints
-      check-number-constraints
-      )
-  )
+  (if (not c) c ; don't need to check more constraints if we've already failed
+    ; TODO: note this is now a kind of reduce with early escape on false
+    (-> c
+        ; TODO: are all of these them same shape? reduces until a false is found?  Should I move that into this controller function?
+        (check-wrapper check-disequalities)
+        (check-wrapper check-symbol-constraints)
+        (check-wrapper check-number-constraints)
+        (check-wrapper check-conso-constraints)
+        )))
+
 ;; ---------------------------------------------
 ;; goal combinators - conjunction, disjunction
 ;; ---------------------------------------------

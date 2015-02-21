@@ -190,3 +190,19 @@
   (is (= [(lvar 0)] (:numbers (first (call-goal (fresh [x] (numbero x)))))))
   (is (= [] (:numbers (first (call-goal (fresh [x] (numbero x) (== x 5)))))))
   )
+
+(deftest conso-test
+  (let [r1 (call-goal (fresh [x y z] (conso x y z)))]
+    (is (= 1 (count r1)))
+    (is (= 1 (count (consos (first r1)))))) 
+  (let [r2 (call-goal (fresh [x y z] (== x 5) (conso x y z))) ; head only bound
+        r3 (call-goal (fresh [x y] (== x 5) (conso x y [5 6 7]))) ; head and result bound
+        r4 (call-goal (fresh [x y] (== x 5) (== y [6 7]) (conso x y [5 6 7]))) ; all three bound - pass
+        r5 (call-goal (fresh [x y] (== x 5) (== y [6 7]) (conso x y [5 8 9]))) ; all three bound - fail
+        r6 (call-goal (fresh [x] (conso 5 [6 7] x)))   ; head and tail bound
+        r7 (call-goal (fresh [h t] (conso h t [1 2 3]) (== t 5))) ; update after constraint - fail
+        ]
+    
+    )
+  
+  )
