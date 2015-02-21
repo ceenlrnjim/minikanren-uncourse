@@ -195,6 +195,12 @@
   (let [r1 (call-goal (fresh [x y z] (conso x y z)))]
     (is (= 1 (count r1)))
     (is (= 1 (count (consos (first r1)))))) 
+  (is (= mzero (call-goal (fresh [x y] (conso x y 5))))) ; seq required in z
+  (is (= mzero (call-goal (fresh [x y] (conso x 5 y))))) ; seq required in y
+  (is (not (empty? (call-goal (conso 5 [6] [5 6]))))) ; regular old cons
+  (is (= mzero (call-goal (conso 5 [6] [1 2 3])))) ; right types, wrong values
+
+  ;TODO: finish cases below as tests
   (let [r2 (call-goal (fresh [x y z] (== x 5) (conso x y z))) ; head only bound
         r3 (call-goal (fresh [x y] (== x 5) (conso x y [5 6 7]))) ; head and result bound
         r4 (call-goal (fresh [x y] (== x 5) (== y [6 7]) (conso x y [5 6 7]))) ; all three bound - pass
@@ -204,5 +210,6 @@
         ]
     
     )
-  
   )
+
+(deftest check-conso-test)
