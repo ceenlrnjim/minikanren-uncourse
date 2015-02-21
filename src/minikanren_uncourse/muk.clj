@@ -421,6 +421,8 @@
     (consos c)))
 
 (defn check-wrapper 
+  "constriant checkers expect to get a constraint store.  
+  This short circuits the constraints if we have already failed."
   [c f]
   (if (= false c) c (f c)))
 
