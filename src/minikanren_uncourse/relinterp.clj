@@ -101,7 +101,7 @@
             (unboundo `list env)
             (eval-exp*o args env out))]
 
-    ; cons
+    ; cons (eager)
     [(fresh [he te hv tv]
             ; TODO: check that t is a list?
             (== expr `(cons ~he ~te))
@@ -123,6 +123,27 @@
             (unboundo `cdr env)
             (conso h out lv)
             (eval-expo le env lv))]
+
+    ; lazy cons
+    ; TODO: ultimately need an absento for the :suspended-pair and :suspend tags
+    [(fresh [he te]
+            (== expr `($cons ~he ~te))
+            (== [:suspended-pair [:suspend he env] [:suspend te env]] out)
+            (unboundo `$cons env))]
+    
+    ; lazy car
+    [(fresh [e he te senv]
+            (== expr `($car ~e))
+            (unboundo `$car env)
+            (eval-expo e env [:suspended-pair [:suspend he senv] [:suspend te senv]])
+            (eval-expo he senv out))]
+  
+    ; lazy cdr
+    [(fresh [e he te senv]
+            (== expr `($cdr ~e))
+            (unboundo `$cdr env)
+            (eval-expo e env [:suspended-pair [:suspend he senv] [:suspend te senv]])
+            (eval-expo te senv out))]
 
     ; null?
     [(fresh (e v)
@@ -150,38 +171,15 @@
        (unboundo `λ env)
        )]
 
-    ;[(fresh [arg body] 
-       ;(== expr `(λ (~arg) ~body))
-       ;(== out [:closure arg body env])
-       ;(symbolo/symbolo arg)
-       ;(unboundo `λ env)
-       ;)]
-
     ; function application
     ; application with multiple arguments
     [(fresh [funcexp funcargs procargs body values extended-env closure-env]
             (conso funcexp funcargs expr)
-            ; TODO: this disequality only holds if quote is unbound
-            ;(conde [(unboundo `quote env) (== funcexp `quote)] [(!= funcexp `quote)])
-            ;(!= funcexp `null?)
-            ;(!= funcexp `if)
-            ;(!= funcexp `cons)
-            ;(!= funcexp `car)
-            ;(!= funcexp `cdr)
-            ;(!= funcexp `list)
             ; note: this ordering is required to get queries to complete quickly
             (eval-exp*o funcargs env values)
             (extendo* procargs values closure-env extended-env)
             (eval-expo funcexp env [:closure procargs body closure-env])
             (eval-expo body extended-env out))]))
-
-    ; function application
-    ;[(fresh [e1 e2 body arg value extended-env closure-env]
-            ;(== expr `(~e1 ~e2))
-            ;(eval-expo e1 env [:closure arg body closure-env])
-            ;(eval-expo e2 env value)
-            ;(conso [arg value] closure-env extended-env)
-            ;(eval-expo body extended-env out))]  
 
     ; numbers
     ;[(symbolo/numbero expr) (== out expr)]
@@ -328,8 +326,10 @@
   (run* [q] (eval-expo `(cons (quote 5) (quote 6)) [] q))
   (run* [q] (eval-expo `(eval (quote (cons (quote 5) (quote 6)))) [] q))
   (run 3 [q] (eval-expo q [] (first (run 1 [q] (conso 5 6 q)))))
+
+  ; lazy cons/car/cdr
+  
 )
 
 
  
-
