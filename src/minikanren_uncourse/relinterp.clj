@@ -66,36 +66,6 @@
             (eval-expo h env hv)
             (eval-exp*o t env tv))]))
 
-; can I build a cheesy version of absento that will hopefully work well
-; enough to keep up with the class?
-(defn absento [x l]
-  (fresh [h t]
-    ; TODO: this will probably break running backwards 
-         ; and I probably don't understand the implications of using this
-    (conda
-      ; empty list
-      [(== l [])]
-      [(== x l) (== :t :f)]
-      [(conso x t l) (== :t :f)] ;fail where x is in the head of the list
-      ; non- empty list
-      [(conso h t l) (absento x h) (absento x t)] ; TODO: do I want (absento x h) as well?
-      [(!= x l)])))
-
-(comment
-  (run 1 [q] (absento 'x 'x))
-  (run 1 [q] (absento 'x 'y))
-  (run 1 [q] (absento 'x '()))
-  (run 1 [q] (absento 'x '(x)))
-  (run 1 [q] (absento 'x '((x))))
-  (run 1 [q] (absento 'x '(y)))
-  (run 1 [q] (absento 'x '((y))))
-  (run 1 [q] (absento 'x '(1 2 3 4 y 5 6)))
-  (run 1 [q] (absento 'x '(1 2 3 4 x 5 6)))
-  (run 1 [q] (absento :closure '(1 2 3 4 :closure 5 6)))
-  (run 1 [q] (absento :closure '(1 2 3 4 :not-closure 5 6)))
-  (run 1 [q] (absento :closure '(1 2 3 4 [:closure] 5 6)))
-  (run 1 [q] (absento :closure '(1 2 3 4 [:not-closure] 5 6)))
-  )
 
 ; due to the namespaceing with the syntax quote, we need the special form symbols to be exported
 ; so that the equality will pass when used in other namespaces
@@ -106,10 +76,6 @@
 (declare car)
 (declare quote)
 (declare null?)
-
-(comment
-
-  )
 
 (defn eval-expo [expr env out]
   (conde
@@ -131,7 +97,6 @@
     ; quote
     [(== expr `(quote ~out)) 
      (unboundo `quote env) ; need to handle case where quote is shadowed
-     ;(absento :closure out)
      ]
 
     ; list
