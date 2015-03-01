@@ -107,8 +107,23 @@
 (declare quote)
 (declare null?)
 
+(comment
+
+  )
+
 (defn eval-expo [expr env out]
   (conde
+
+    ;eval
+    [(fresh [e value] 
+            (== expr `(eval ~e))
+            (unboundo `eval env)
+            (eval-expo e env value)
+            ;(== out value)
+            (eval-expo value [] out)
+           )
+     
+     ]
 
     ; symbols
     [(symbolo/symbolo expr) (lookupo expr env out)]
@@ -346,6 +361,11 @@
   ; multiple argument abstraction/application
   (run 1 [out] (eval-expo `(λ (x y z) (list z y x)) [] out))
   (run 1 [out] (eval-expo `((λ (x y z) (list z y x)) (quote a) (quote b) (quote c)) [] out))
+
+
+  ; eval check
+  (run* [q] (eval-expo `(cons (quote 5) (quote 6)) [] q))
+  (run* [q] (eval-expo `(eval (quote (cons (quote 5) (quote 6)))) [] q))
 )
 
 
