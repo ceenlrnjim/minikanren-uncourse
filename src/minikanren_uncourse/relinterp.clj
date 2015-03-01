@@ -327,9 +327,12 @@
   (run* [q] (eval-expo `(eval (quote (cons (quote 5) (quote 6)))) [] q))
   (run 3 [q] (eval-expo q [] (first (run 1 [q] (conso 5 6 q)))))
 
-  ; lazy cons/car/cdr
-  
-)
+  ; lazy cons/car/cdr - "cons 5 onto omega - omega is ((λ (x) (x x)) (λ (x) (x x))) - which is an infinite loop in the lambda calculus"
+  ; $cdr of this would be an infinite loop
+  (run 1 [q] (eval-expo `($car ($cons (quote 5) ((λ (x) (x x)) (λ (x) (x x))))) [] q))
 
+  ; TODO: without absento in core.logic, this gives our tagged structures back, which we don't want
+  (run 1 [q] (eval-expo `($car ~q) [] `5))
+)
 
  
