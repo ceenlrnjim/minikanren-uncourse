@@ -85,11 +85,7 @@
             (== expr `(eval ~e))
             (unboundo `eval env)
             (eval-expo e env value)
-            ;(== out value)
-            (eval-expo value [] out)
-           )
-     
-     ]
+            (eval-expo value [] out))]
 
     ; symbols
     [(symbolo/symbolo expr) (lookupo expr env out)]
@@ -331,7 +327,9 @@
   ; eval check
   (run* [q] (eval-expo `(cons (quote 5) (quote 6)) [] q))
   (run* [q] (eval-expo `(eval (quote (cons (quote 5) (quote 6)))) [] q))
+  (run 3 [q] (eval-expo q [] (first (run 1 [q] (conso 5 6 q)))))
 )
 
 
+ 
 

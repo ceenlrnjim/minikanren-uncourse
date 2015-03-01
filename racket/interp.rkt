@@ -67,6 +67,11 @@
            (== `(closure ,x ,body ,env) out)
            (symbolo x)
            (unboundo 'lambda env))]
+        [(fresh (e value)
+            (== `(eval ,e) expr)
+            (eval-expo e env value)
+            (unboundo 'eval env)
+            (eval-expo value '() out))]
         [(fresh (e1 e2 val x body envˆ) ;; application
            (== `(,e1 ,e2) expr)
            (eval-expo e1 env `(closure ,x ,body ,envˆ))
@@ -146,3 +151,7 @@
       )
     )
   )
+
+
+(run* (q) (eval-expo `(eval (quote (cons (quote 5) (quote 6)))) '() q))
+;(run 2 (q) (eval-expo q '() q))
