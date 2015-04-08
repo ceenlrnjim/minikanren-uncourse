@@ -26,24 +26,56 @@
 
 (defn subtypeo [child-type parent-type]
   (conde
-     [(fresh [b] 
-             (== [:val b] child-type) (booleano b) (== parent-type :bool))])
+    [(fresh [b] 
+        (== [:val b] child-type) 
+        (conde 
+          [(booleano b) (== parent-type :bool)]
+          [(symbolo/numbero b) (== parent-type :num)]
+          ))]
+    [(fresh [t1 t2]
+        (== [:union t1 t2] child-type)
+        (subtypeo t1 parent-type)
+        (subtypeo t2 parent-type))]
+    ))
+
+(defn uniono [t1 t2 union-type]
+  (conde
+    [(== t1 t2) (== union-type t1)]
+    [(!= t1 t2) (== [:union t1 t2] union-type)]
+    )
   )
 
 
 (defn infer [term prop-env type]
   (conde
+    ; Note that in our language, true and false have different, more specific
+    ; types, than bool.  They're both sub-types of bool, but they are
+    ; different types (unlike classic Hilney Milner languages)
+    ; these things will only unify because we have the subtypes and unions
     [(== term true) (== type [:val true])]
     [(== term false) (== type [:val false])]
-    [(fresh [condition then else then-prop else-prop cond-type]
+
+    ; if conditions
+    [(fresh [condition then else then-prop else-prop cond-type t1 t2]
+            ; detect that this is an if condition
             (== term `(if ~condition ~then ~else))
+            ; infer the type of the condition
             (infer condition prop-env cond-type)
+            ; confirm that the condition type is boolean (required for if)
             (subtypeo cond-type :bool)
-
+            ; based on the condition type, figure out the types of the two branches
             (infer-true-false-types condition then-prop else-prop)
+            ; now that we know the type proposition for the then branch, determine the type of the then expression
+            (infer then (extend-env prop-env then-prop) t1)
+            ; now that we know the type proposition for the else branch, determine the type of the else expression
+            ; we need separate "output" type variables so that they don't get unified together - this would be ok
+            ; in type systems where both branches of the if must have the same type (e.g. Hindley Milner (sp?))
+            ; but in typed racket we want to establish a union of these two types
+            (infer else (extend-env prop-env else-prop) t2)
+            (uniono t1 t2 type))
+     ]
 
-            (infer then (extend-env prop-env then-prop) type)
-            (infer else (extend-env prop-env else-prop) type))]
+    ; lambda expressions
     [(fresh [arg argtype body body-type new-prop-env]
             ; Match the lambda expression
             (== term `(lambda (~arg :> ~argtype) ~body))
@@ -55,14 +87,28 @@
             ; argtype to body-type (as represented by [a :-> b]
             (== type [argtype :-> body-type])
             )]
-      [(fresh []
-            (symbolo/symbolo term)
-            (proveo prop-env (proposition term type)))]
+
+    ; symbols
+    [(fresh []
+          (symbolo/symbolo term)
+          (proveo prop-env (proposition term type)))]
+
+    ; numbers
+    [(symbolo/numbero term) (== type [:val term])]
      
 ))
 
 (comment
-  (run 1 [q] (infer `(if true true true) [] q))
   (run*  [q] (infer `(if true true true) [] q))
+  (run*  [q] (infer `(if false true true) [] q))
+  ; this was failing because the same type variable was used for the then and else
+  ; now w
+  (run*  [q] (infer `(if true true false) [] q)) 
+  ; can't run backwards yet since proveo isn't implemented
+  (print  (run 1 [q] (infer q [] [:union [:val true] [:val false]])))
+
+  ; this test should fail
+  (run* [q] (infer `(if true 1 1) [] :num))
   )
+
 
