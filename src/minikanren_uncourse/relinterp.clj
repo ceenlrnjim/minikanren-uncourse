@@ -272,8 +272,6 @@
     ((fn [x] (f (x x))) 
      (fn [x] (f (x x)))))
 
-
-
   (run*  [q]
     (eval-expo
      `((((λ (f)
