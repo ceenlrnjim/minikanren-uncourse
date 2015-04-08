@@ -19,13 +19,26 @@
 (defn proveo [prop-env prop]
   )
 
+(defn booleano [v]
+  (conde 
+    [(== v true)]
+    [(== v false)]))
+
+(defn subtypeo [child-type parent-type]
+  (conde
+     [(fresh [b] 
+             (== [:val b] child-type) (booleano b) (== parent-type :bool))])
+  )
+
+
 (defn infer [term prop-env type]
   (conde
-    [(== term true) (== type :bool)]
-    [(== term false) (== type :bool)]
-    [(fresh [condition then else then-prop else-prop]
+    [(== term true) (== type [:val true])]
+    [(== term false) (== type [:val false])]
+    [(fresh [condition then else then-prop else-prop cond-type]
             (== term `(if ~condition ~then ~else))
-            (infer condition prop-env :bool)
+            (infer condition prop-env cond-type)
+            (subtypeo cond-type :bool)
 
             (infer-true-false-types condition then-prop else-prop)
 
@@ -52,3 +65,4 @@
   (run 1 [q] (infer `(if true true true) [] q))
   (run*  [q] (infer `(if true true true) [] q))
   )
+
