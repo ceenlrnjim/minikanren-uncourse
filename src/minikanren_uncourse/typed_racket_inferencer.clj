@@ -15,10 +15,6 @@
 (defn proposition [term type]
   [:proposition term type])
 
-(defn extend-env
-  [env prop]
-  (cons prop env))
-
 (defn proveo [prop-env prop]
   )
 
@@ -56,15 +52,15 @@
     ; types, than bool.  They're both sub-types of bool, but they are
     ; different types (unlike classic Hilney Milner languages)
     ; these things will only unify because we have the subtypes and unions
-    [(== term true) (subtypeo [:val true] type)]
-    [(== term false) (subtypeo [:val false] type)]
+    [(== term true) (== [:val true] type)]
+    [(== term false) (== [:val false] type)]
 
     ; numbers
     ; - note that we;re saying the type is [:val term] so type can be any supertype of that
-    [(symbolo/numbero term) (subtypeo [:val term] type)]
+    [(symbolo/numbero term) (== [:val term] type)]
 
     ; if conditions
-    [(fresh [condition then else then-prop else-prop cond-type t1 t2]
+    [(fresh [condition then else then-prop then-env else-prop else-env cond-type t1 t2]
             ; detect that this is an if condition
             (== term `(if ~condition ~then ~else))
             ; infer the type of the condition
@@ -74,12 +70,16 @@
             ; based on the condition type, figure out the types of the two branches
             (infer-true-false-types condition then-prop else-prop)
             ; now that we know the type proposition for the then branch, determine the type of the then expression
-            (infer then (extend-env prop-env then-prop) t1)
+            ; - extend the environment
+            (conso then-prop prop-env then-env)
+            (infer then then-env t1)
             ; now that we know the type proposition for the else branch, determine the type of the else expression
             ; we need separate "output" type variables so that they don't get unified together - this would be ok
             ; in type systems where both branches of the if must have the same type (e.g. Hindley Milner (sp?))
             ; but in typed racket we want to establish a union of these two types
-            (infer else (extend-env prop-env else-prop) t2)
+            ; - extend the environment
+            (conso else-prop prop-env else-env)
+            (infer else else-env t2)
             (uniono t1 t2 type))
      ]
 
@@ -88,12 +88,21 @@
             ; Match the lambda expression
             (== term `(lambda (~arg :> ~argtype) ~body))
             ; We know the type of the argument since it is given, so extend the environment with it
-            (== new-prop-env (extend-env prop-env (proposition arg argtype)))
+            ; - extend the environment
+            (conso (proposition arg argtype) prop-env new-prop-env)
             ; With this updated environment, infer the type of the body
             (infer body new-prop-env body-type)
             ; return the type of the body is a function type from
             ; argtype to body-type (as represented by [a :-> b]
             (subtypeo [argtype :-> body-type] type)
+            )]
+
+    ; inc - special case so we have something that can fail a type check
+    [(fresh [expr expr-type]
+            (== `(inc ~expr) term)
+            (infer expr prop-env expr-type) ; I think num still works here since we have all types returned
+            (subtypeo expr-type :num)
+            (== :num type)
             )]
 
     ; symbols
@@ -105,13 +114,17 @@
 ))
 
 (comment
-  (run* [concrete-type] 
-        (infer true [] concrete-type)
-        (subtypeo concrete-type :bool))
-
   (run* [q] (infer true [] q))
-  (run* [q] (infer 1 [] :num))
+  (run* [q] 
+        (fresh [concrete-type]
+          (infer true [] concrete-type)
+          (subtypeo concrete-type :bool)))
+
   (run* [q] (infer 1 [] q))
+  (run* [q concrete-type] 
+        (infer 1 [] concrete-type)
+        (subtypeo concrete-type :num))
+
   (run*  [q] (infer `(if true true true) [] q))
   (run*  [q] (infer `(if false true true) [] q))
   ; this was failing because the same type variable was used for the then and else
@@ -121,6 +134,12 @@
   (print  (run 1 [q] (infer q [] [:union [:val true] [:val false]])))
 
   (run* [q] (infer `(if true 1 1) [] q))
+
+  (run* [q] (infer `(inc 1) [] q))
+  (run* [q] (infer `(inc false) [] q))
+
   )
+  (print (run* [q] (infer `(lambda (x :> :num) (inc x)) [] q)))
+
 
 
