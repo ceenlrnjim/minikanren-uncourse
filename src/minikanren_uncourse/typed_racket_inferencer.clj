@@ -15,8 +15,21 @@
 (defn proposition [term type]
   [:proposition term type])
 
-(defn proveo [prop-env prop]
-  )
+
+(defn lookupo [variable env res]
+  (conde
+    [(fresh [d]
+            (conso [:proposition variable res] d env))]
+    [(fresh [prop-term prop-type d]
+            (!= prop-term variable)
+            (conso [:proposition prop-term prop-type] d env)
+            (lookupo variable d res))]))
+
+(defn proveo [prop-env variable type]
+  (conde
+    [(fresh [t1]
+            (lookupo variable prop-env t1)
+            (subtypeo t1 type))]))
 
 (defn booleano [v]
   (conde 
@@ -108,7 +121,7 @@
     ; symbols
     [(fresh []
           (symbolo/symbolo term)
-          (proveo prop-env (proposition term type)))]
+          (proveo prop-env term type))]
 
      
 ))
@@ -138,8 +151,8 @@
   (run* [q] (infer `(inc 1) [] q))
   (run* [q] (infer `(inc false) [] q))
 
-  )
   (print (run* [q] (infer `(lambda (x :> :num) (inc x)) [] q)))
+  )
 
 
 
