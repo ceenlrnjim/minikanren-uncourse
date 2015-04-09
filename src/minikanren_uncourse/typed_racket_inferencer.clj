@@ -7,7 +7,10 @@
 (defn infer-true-false-types [term then-prop else-prop]
   (conde 
     [(== false term) (== then-prop :impossible) (== else-prop :trivial)]
-    [(== true term) (== then-prop :trivial) (== else-prop :impossible)]))
+    [(conde
+       [(== true term)]
+       [(symbolo/numbero term)])  
+     (== then-prop :trivial) (== else-prop :impossible)]))
 
 (defn proposition [term type]
   [:proposition term type])
@@ -26,12 +29,12 @@
 
 (defn subtypeo [child-type parent-type]
   (conde
+    [(== child-type parent-type)]
     [(fresh [b] 
         (== [:val b] child-type) 
         (conde 
           [(booleano b) (== parent-type :bool)]
-          [(symbolo/numbero b) (== parent-type :num)]
-          ))]
+          [(symbolo/numbero b) (== parent-type :num)]))]
     [(fresh [t1 t2]
         (== [:union t1 t2] child-type)
         (subtypeo t1 parent-type)
@@ -48,12 +51,17 @@
 
 (defn infer [term prop-env type]
   (conde
+    ; Boolean
     ; Note that in our language, true and false have different, more specific
     ; types, than bool.  They're both sub-types of bool, but they are
     ; different types (unlike classic Hilney Milner languages)
     ; these things will only unify because we have the subtypes and unions
-    [(== term true) (== type [:val true])]
-    [(== term false) (== type [:val false])]
+    [(== term true) (subtypeo [:val true] type)]
+    [(== term false) (subtypeo [:val false] type)]
+
+    ; numbers
+    ; - note that we;re saying the type is [:val term] so type can be any supertype of that
+    [(symbolo/numbero term) (subtypeo [:val term] type)]
 
     ; if conditions
     [(fresh [condition then else then-prop else-prop cond-type t1 t2]
@@ -85,7 +93,7 @@
             (infer body new-prop-env body-type)
             ; return the type of the body is a function type from
             ; argtype to body-type (as represented by [a :-> b]
-            (== type [argtype :-> body-type])
+            (subtypeo [argtype :-> body-type] type)
             )]
 
     ; symbols
@@ -93,12 +101,17 @@
           (symbolo/symbolo term)
           (proveo prop-env (proposition term type)))]
 
-    ; numbers
-    [(symbolo/numbero term) (== type [:val term])]
      
 ))
 
 (comment
+  (run* [concrete-type] 
+        (infer true [] concrete-type)
+        (subtypeo concrete-type :bool))
+
+  (run* [q] (infer true [] q))
+  (run* [q] (infer 1 [] :num))
+  (run* [q] (infer 1 [] q))
   (run*  [q] (infer `(if true true true) [] q))
   (run*  [q] (infer `(if false true true) [] q))
   ; this was failing because the same type variable was used for the then and else
@@ -107,8 +120,7 @@
   ; can't run backwards yet since proveo isn't implemented
   (print  (run 1 [q] (infer q [] [:union [:val true] [:val false]])))
 
-  ; this test should fail
-  (run* [q] (infer `(if true 1 1) [] :num))
+  (run* [q] (infer `(if true 1 1) [] q))
   )
 
 
