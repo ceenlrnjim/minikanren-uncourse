@@ -1,4 +1,6 @@
 ; Uncourse #14 - live coding a type inferencer for typed racket like language
+; this is an a relational version of the occurance typing system used in
+; typed racket
 (ns minikanren-uncourse.typed-racket-inferencer
   (:refer-clojure :exclude [==])
   (:require [symbolo.core :as symbolo])
