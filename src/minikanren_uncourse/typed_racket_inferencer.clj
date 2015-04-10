@@ -4,13 +4,16 @@
   (:require [symbolo.core :as symbolo])
   (:use clojure.core.logic))
 
-(defn infer-true-false-types [term then-prop else-prop]
+(defn infer-if-branch-props [term then-prop else-prop]
   (conde 
     [(== false term) (== then-prop :impossible) (== else-prop :trivial)]
     [(conde
        [(== true term)]
        [(symbolo/numbero term)])  
-     (== then-prop :trivial) (== else-prop :impossible)]))
+     (== then-prop :trivial) (== else-prop :impossible)]
+    [(symbolo/symbolo term) 
+     (== [:proposition term [:not [:val false]]] then-prop)
+     (== [:proposition term [:val false]] else-prop)]))
 
 (defn proposition [term type]
   [:proposition term type])
@@ -81,7 +84,7 @@
             ; confirm that the condition type is boolean (required for if)
             (subtypeo cond-type :bool)
             ; based on the condition type, figure out the types of the two branches
-            (infer-true-false-types condition then-prop else-prop)
+            (infer-if-branch-props condition then-prop else-prop)
             ; now that we know the type proposition for the then branch, determine the type of the then expression
             ; - extend the environment
             (conso then-prop prop-env then-env)
@@ -122,8 +125,6 @@
     [(fresh []
           (symbolo/symbolo term)
           (proveo prop-env term type))]
-
-     
 ))
 
 (comment
@@ -151,7 +152,20 @@
   (run* [q] (infer `(inc 1) [] q))
   (run* [q] (infer `(inc false) [] q))
 
-  (print (run* [q] (infer `(lambda (x :> :num) (inc x)) [] q)))
+  (run* [q] (infer `(lambda (x :> :num) (inc x)) [] q))
+  (run* [q] (infer `(lambda (x :> :num) (inc false)) [] q))
+  (run* [q] (infer `(lambda (x :> [:val false]) (inc arg)) [] q))
+  (run* [q] (infer `(lambda (x :> [:union [:val false] :num]) x) [] q))
+  (run* [q] (infer `(lambda (x :> [:union [:val false] :num]) (inc x)) [] q))
+
+  ; TODO: next steps ->
+  ; prop-env at if: [[:proposition arg [:union [:val false] :num]]]
+  ; prop-env at (inc arg)
+  ;   [ [:proposition arg [:union [:val false] :num]]
+  ;     [:proposition arg [:not [:val false]]]
+  ;   ]
+  ;   from this we should be able to deduce that [:proposition arg [:val true]
+  (run* [q] (infer `(lambda (x :> [:union [:val f] :num]) (if arg (inc arg) 0)) [] q))
   )
 
 
