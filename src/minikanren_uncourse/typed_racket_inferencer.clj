@@ -164,7 +164,16 @@
   ;   [ [:proposition arg [:union [:val false] :num]]
   ;     [:proposition arg [:not [:val false]]]
   ;   ]
-  ;   from this we should be able to deduce that [:proposition arg [:val true]
+  ;   from this we should be able to deduce that [:proposition arg :num]
+  ;   This will involve a function env+ that takes a proposition env and a proposition
+  ;   and returns a new proposition environment. this is the proposition that the variable
+  ;   case will access.
+  ;
+  ; The "then" case becomes
+  ; (fresh ()
+  ;   (env+ prop-env then-prop new-prop-env)
+  ;   (infer then new-prop-env t1))
+  ; and similarly for the else case
   (run* [q] (infer `(lambda (x :> [:union [:val f] :num]) (if arg (inc arg) 0)) [] q))
   )
 
