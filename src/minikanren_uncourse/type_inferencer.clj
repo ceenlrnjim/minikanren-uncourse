@@ -102,4 +102,17 @@
   (run* [q] (!- [] `5 q))
   (run* [q] (!- [] `false q))
   (run* [q] (!- [] `(+ 5 (+ 6 7)) q))
+
+
+  ; what might we not be able to give a type to?
+  (run* [q] (!- [] `(λ (u) (u u)) q)) ; self application
+
+  ; running backwards
+  (run 1 [q] (!- [] q [`a :-> `a]))
+  (run 5 [q] (!- [] q [:a :-> :a]))
+
+  (run 1 [q] (!- [] q [:num :-> :bool]))
+
+  ; proving a proposition as a type check
+  (run 1 [q] (!- [] q `(a :-> ((a :-> b) :-> ((b :-> c) :-> c)))))
   )
