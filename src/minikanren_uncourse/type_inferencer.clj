@@ -34,7 +34,48 @@
   (conde
     ; variable case
     [(symbolo/symbolo expr) (lookupo expr gamma type)]
-    
+
+    ; boolean
+    [(== true expr) (== :bool type)]
+    [(== false expr) (== :bool type)]
+
+    ; Numbers
+    [(symbolo/numbero expr) (== :int type)]
+    ; addition
+    [(fresh [e1 e2]
+            (== `(+ ~e1 ~e2) expr)
+            (== :int type)
+            (!- gamma e1 :int)
+            (!- gamma e2 :int)
+            )]
+    ; subtraction
+    [(fresh [e1 e2]
+            (== `(- ~e1 ~e2) expr)
+            (== :int type)
+            (!- gamma e1 :int)
+            (!- gamma e2 :int))]
+    ; multiplication
+    [(fresh [e1 e2]
+            (== `(* ~e1 ~e2) expr)
+            (== :int type)
+            (!- gamma e1 :int)
+            (!- gamma e2 :int))]
+              
+    ; zero? function         
+    [(fresh [e]
+            (== `(zero? ~e) expr)
+            (== :bool type)
+            (!- gamma e :int)
+            )]
+
+    ; if expression
+    [(fresh [pred then else]
+            (== `(if ~pred ~then ~else) expr)
+            (!- gamma pred :bool)
+            (!- gamma then type)
+            (!- gamma else type)
+            )]
+
     ; abstraction/lambda
     [(fresh [x e T1 T2 gamma_] 
             (== `(λ (~x) ~e) expr)
@@ -58,5 +99,7 @@
   (run* [q] (!- [[`y :bool]] `y q))
   (run* [q] (!- [[`y :bool]] `((λ (z) z) y) q))
   (run* [q] (!- [] `((λ (z) z) (λ (y) y)) q))
-
+  (run* [q] (!- [] `5 q))
+  (run* [q] (!- [] `false q))
+  (run* [q] (!- [] `(+ 5 (+ 6 7)) q))
   )
