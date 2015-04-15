@@ -1,0 +1,37 @@
+What is nominal logic programming?
+
+http://webyrd.net/alphamk/alphamk.pdf
+
+alpha-equivalence in the lambda calculus
+in lambda calc
+1) variables
+2) abstraction/lambda
+3) application (procedure call)
+
+alpha equivalence has to do with the lambda expressions
+One of its interesting properties is as a binding form - introduce a variable and use it in the body
+As long as we're careful not to inadvertently capture/shadow other variables, we can change the name of a parameter and all occurances of it in the body without changing the program
+- consistent renaming of bound variables is safe
+
+So, (lambda (x) x) and (lambda (y) y) are the same in some sense
+- they are not syntactically identical (as quoted forms they are distinct lists)
+- but when you evaluate these expressions they both return the identity procedure
+- the behavior of the resulting procedures are identical
+- so we say these two lambdas are "alpha equivalent" (based on one of Church's rules)
+- implementing alpha equivalence is not so straight forward
+
+If you want to build something that manipulates code - languages, tools, etc. - you have to have some handling/notion of alpha equivalence
+
+"Nominal Logic" is a logic that talks about variable names and binding
+
+Binding logic comes up in other places besides just the lambda calculus
+- logic itself (first order logic)
+    - exists X . forall Y . X > Y
+    - these statements have scoping rules just like functions
+- Calculus
+    - it is a symbolic language that cares about names of variables
+- Macros (scheme/lisp/or other language)
+    - "hygenic"
+
+- binding the name of a variable to a value comes up over and over again
+- it is a very general notion that applies in many contexts
