@@ -35,3 +35,59 @@ Binding logic comes up in other places besides just the lambda calculus
 
 - binding the name of a variable to a value comes up over and over again
 - it is a very general notion that applies in many contexts
+
+Andy Pitts at Cambridge + his students have done a lot of work in this area
+- Christian Urban
+- Matt Lakin (alphaML)
+- James Cheney (alphaProlog)
+
+alphaKanren - implementation of nominal logic programming in miniKanren
+- (== '(λ (x) x) '(λ (y) y)) normally will not unify since they are not the same syntactically
+
+What if we tried
+
+(fresh (x y)
+    (symbolo x)
+    (symbolo y)
+    (== `(λ (,x) ,x) ; (list 'lambda (list x) x)
+        `(λ (,y) ,y))) 
+
+this will unify, but what if things get more complicated
+
+
+(fresh (x y z)
+    (symbolo x)
+    (symbolo y)
+    (symbolo z)
+    (== `(λ (,x) (λ (z) x))
+        `(λ (,y) (λ (z) z))))
+
+This will still unify, but these two terms don't represent the same lambda term anymore, so they shouldn't unify
+we end up with (λ (x) (λ (x) x)) for both terms
+
+So the first thing that Nominal Logic Programming (NLP) is going to do, is change the definition of unification.  originally we had a sort of "equal?" based semantics for unification (==)
+Now, we're going to have an alpha-equivalent version of unification, ==-alpha or something.
+(==-alpha '(λ (x) x) '(λ (y) y)) would unify
+
+So instead of having the minikanren environment have to understand lambda and all the other binding terms we might use, we're going to build up the terms using new operators
+
+; tie operator - scoping operator, x is only bound within the body of the tie expression
+(fresh-nom (x y) ; introduces special variables that aren't logic variables, but lexical variables in the system that have scope associated with them
+                 ; this is like lexically scoped gen-syms
+    (== `(λ ,(tie x `(var ,x))) ; tie variables have to be nom variables, cannot be logic variables
+        `(λ ,(tie y `(var ,y)))))
+
+
+(fresh (v w)
+    (fresh-nom (x y)
+        (== `(λ ,(tie x v))
+            `(λ ,(tie y w))))
+            ; v and w may not be the same, they just need to be nominally the same once all occurances of x and y have been replaced within them
+
+(fresh (w)
+    (fresh-nom (x)
+        (hash x `(λ ,(tie (y w)))))) ; this says the x can't appear free in w
+
+so (hash x `(λ ,(tie y `(var ,x)))) ; (λ (y) x) since x appears free in the lambda expression, it violates the hash constraint
+but (hash x `(λ ,(tie x `(var ,x)))) ; (λ (x) x) this does not violate the constraint since x occurs bound, not free 
+
